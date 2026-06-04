@@ -17,6 +17,7 @@ const pauseScreen = document.getElementById("pause-screen");
 const stayButton = document.getElementById("stay-button");
 const pauseLeaveButton = document.getElementById("pause-leave-button");
 const settingsButton = document.getElementById("settings-button");
+const fullscreenButton = document.getElementById("fullscreen-button");
 const settingsScreen = document.getElementById("settings-screen");
 const closeSettingsButton = document.getElementById("close-settings-button");
 const pcModeButton = document.getElementById("pc-mode-button");
@@ -201,9 +202,30 @@ function setControlMode(mode) {
 }
 
 settingsButton.addEventListener("click", openSettings);
+fullscreenButton.addEventListener("click", toggleFullscreen);
 closeSettingsButton.addEventListener("click", closeSettings);
 pcModeButton.addEventListener("click", () => setControlMode("pc"));
 mobileModeButton.addEventListener("click", () => setControlMode("mobile"));
+
+document.addEventListener("fullscreenchange", () => {
+  if (document.fullscreenElement) {
+    fullscreenButton.textContent = "🗗";
+    fullscreenButton.title = "Exit Full Screen";
+  } else {
+    fullscreenButton.textContent = "⛶";
+    fullscreenButton.title = "Full Screen";
+  }
+});
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch((error) => {
+      console.error("Fullscreen error:", error);
+    });
+  } else {
+    document.exitFullscreen();
+  }
+}
 
 function endGame() {
   gameOver = true;
@@ -605,4 +627,5 @@ function loop() {
 loop();
 updateHud();
 updateControlModeButtons();
+ 
  
