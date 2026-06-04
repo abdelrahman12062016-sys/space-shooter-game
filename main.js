@@ -4,6 +4,7 @@ const hud = document.getElementById("hud");
 const scoreElement = document.getElementById("score");
 const livesElement = document.getElementById("lives");
 const highScoreElement = document.getElementById("high-score");
+const powerUpStatusElement = document.getElementById("power-up-status");
 const startScreen = document.getElementById("start-screen");
 const startButton = document.getElementById("start-button");
 const gameOverScreen = document.getElementById("game-over-screen");
@@ -58,6 +59,14 @@ function updateHud() {
   scoreElement.textContent = score;
   livesElement.textContent = lives;
   highScoreElement.textContent = highScore;
+
+  if (activePowerUp) {
+    powerUpStatusElement.textContent = activePowerUp.type === "shield" ? "Shield active" : "Speed active";
+  } else if (powerUps.length > 0) {
+    powerUpStatusElement.textContent = powerUps[0].type === "shield" ? "Shield nearby" : "Speed nearby";
+  } else {
+    powerUpStatusElement.textContent = "None";
+  }
 }
 
 function updateMobileControls() {
@@ -354,7 +363,7 @@ function spawnPowerUp() {
   powerUps.push({
     x: Math.random() * (canvas.width - 60) + 30,
     y: Math.random() * (canvas.height - 60) + 30,
-    size: 20,
+    size: 28,
     type,
     duration: 5000
   });
@@ -538,6 +547,8 @@ function draw() {
   powerUps.forEach(powerUp => {
     ctx.save();
     ctx.translate(powerUp.x, powerUp.y);
+    ctx.shadowBlur = 18;
+    ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
 
     if (powerUp.type === "speed") {
       ctx.fillStyle = "#76ff03";
@@ -548,6 +559,9 @@ function draw() {
       ctx.lineTo(-powerUp.size / 2, 0);
       ctx.closePath();
       ctx.fill();
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.stroke();
     } else {
       ctx.fillStyle = "#03a9f4";
       ctx.beginPath();
@@ -556,8 +570,12 @@ function draw() {
       ctx.strokeStyle = "white";
       ctx.lineWidth = 2;
       ctx.stroke();
+      ctx.fillStyle = "white";
+      ctx.font = "bold 18px Arial";
+      ctx.fillText("S", -6, 7);
     }
 
+    ctx.shadowBlur = 0;
     ctx.restore();
   });
 
