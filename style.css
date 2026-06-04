@@ -1,4 +1,14 @@
-body {
+line-height: 1;
+}
+
+.icon-button.leave {
+  background: crimson;
+  color: white;
+  border-color: #ffccd5;
+}
+
+.icon-button.leave:hover {
+  background:body {
   background: radial-gradient(circle at top, #172554, #020617 60%);
   display: flex;
   justify-content: center;
@@ -84,7 +94,7 @@ canvas {
 
 .pause-button {
   position: absolute;
-  top: 14px;
+  top: 12px;
   right: 14px;
   z-index: 3;
   display: flex;
@@ -123,7 +133,7 @@ canvas {
 
 .settings-button {
   position: absolute;
-  top: 14px;
+  top: 12px;
   right: 66px;
   z-index: 3;
   height: 42px;
@@ -138,6 +148,25 @@ canvas {
 }
 
 .settings-button:hover {
+  background: rgba(0, 255, 255, 0.35);
+}
+
+.fullscreen-button {
+  position: absolute;
+  top: 12px;
+  right: 118px;
+  z-index: 3;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(0, 229, 255, 0.9);
+  background: rgba(2, 6, 23, 0.78);
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.25);
+}
+
+.fullscreen-button:hover {
   background: rgba(0, 255, 255, 0.35);
 }
 
@@ -375,21 +404,16 @@ canvas {
 
 .icon-button .icon {
   font-size: 24px;
-  line-height: 1;
-}
-
-.icon-button.leave {
-  background: crimson;
-  color: white;
-  border-color: #ffccd5;
-}
-
-.icon-button.leave:hover {
-  background: #ff5f77;
+ #ff5f77;
 }
 
 .start-screen button:hover,
 .game-over-screen button:hover,
+.icon-button:hover {
+  background: white;
+  color: black;
+}
+
 .icon-button:hover {
   background: white;
   color: black;
