@@ -1,14 +1,4 @@
-line-height: 1;
-}
-
-.icon-button.leave {
-  background: crimson;
-  color: white;
-  border-color: #ffccd5;
-}
-
-.icon-button.leave:hover {
-  background:body {
+body {
   background: radial-gradient(circle at top, #172554, #020617 60%);
   display: flex;
   justify-content: center;
@@ -404,15 +394,11 @@ canvas {
 
 .icon-button .icon {
   font-size: 24px;
+  color: #ff5f77;
 }
 
 .start-screen button:hover,
 .game-over-screen button:hover,
-.icon-button:hover {
-  background: white;
-  color: black;
-}
-
 .icon-button:hover {
   background: white;
   color: black;

@@ -1,5 +1,3 @@
-alert("JS werkt");
-console.log("GAME STARTED");
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
@@ -629,5 +627,4 @@ function loop() {
 loop();
 updateHud();
 updateControlModeButtons();
- 
  
