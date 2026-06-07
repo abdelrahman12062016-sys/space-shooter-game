@@ -1,13 +1,13 @@
-// AUDIO MET LOKALE PADEN (Werkt perfect op GitHub en je eigen pc)
-const bgMusic = new Audio('audio/background-music.mp3');
+// 🎵 AUDIO PADEN (Direct werkende online links naar retro geluiden)
+const bgMusic = new Audio('https://glynrob.github.io/phaser-picture-match/assets/audio/background.mp3');
 bgMusic.loop = true;       
-bgMusic.volume = 0.3;      
+bgMusic.volume = 0.2; // Achtergrondmuziek (iets zachter gezet)
 
-const shootSound = new Audio('audio/shoot.mp3');
-shootSound.volume = 0.4;
+const shootSound = new Audio('https://glynrob.github.io/phaser-picture-match/assets/audio/laser.mp3');
+shootSound.volume = 0.3; // Schietgeluid
 
-const gameOverSound = new Audio('audio/gameover.mp3');
-gameOverSound.volume = 0.5;
+const gameOverSound = new Audio('https://glynrob.github.io/phaser-picture-match/assets/audio/gameover.mp3');
+gameOverSound.volume = 0.4; // Game over geluid
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
