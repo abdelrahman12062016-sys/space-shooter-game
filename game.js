@@ -1,15 +1,12 @@
-// AUDIO VIA DIRECTE LINKS (OM DIRECT TE TESTEN)
-const bgMusic = new Audio('https://actions.google.com/sounds/v1/ambiences/ambient_hum_air_conditioner.ogg'); 
-// Tip: Voor een echte retro track kun je straks een mp3 in je eigen map zetten. Deze test-link is een rustige ambient sound.
+// AUDIO MET LOKALE PADEN (Werkt perfect op GitHub en je eigen pc)
+const bgMusic = new Audio('audio/background-music.mp3');
 bgMusic.loop = true;       
 bgMusic.volume = 0.3;      
 
-// Een snelle, korte "pop" die perfect werkt als schietgeluid
-const shootSound = new Audio('https://actions.google.com/sounds/v1/cartoon/pop.ogg');
+const shootSound = new Audio('audio/shoot.mp3');
 shootSound.volume = 0.4;
 
-// Een dramatische sound die perfect is voor Game Over
-const gameOverSound = new Audio('https://actions.google.com/sounds/v1/impacts/crash_shatter.ogg');
+const gameOverSound = new Audio('audio/gameover.mp3');
 gameOverSound.volume = 0.5;
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
