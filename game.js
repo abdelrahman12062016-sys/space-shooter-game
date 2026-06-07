@@ -28,17 +28,6 @@ const mobileShootButton = document.getElementById("mobile-shoot-button");
 canvas.width = 800;
 canvas.height = 600;
 
-// 🎵 JOUW AUDIO BESTANDEN
-const bgMusic = new Audio('audio/4379051-give-me-space-8294.mp3');
-bgMusic.loop = true;       
-bgMusic.volume = 0.2; // Achtergrondmuziek
-
-const shootSound = new Audio('audio/u_f09vejvoga-gun-shot-350315.mp3');
-shootSound.volume = 0.3; // Schietgeluid
-
-const gameOverSound = new Audio('audio/dragon-studio-game-over-retro-8bit-sfx-499656.mp3');
-gameOverSound.volume = 0.4; // Game over geluid
-
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
