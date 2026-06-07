@@ -1,3 +1,14 @@
+// 🎵 AUDIO SECTION (Gekoppeld aan jouw exacte bestandsnamen)
+const bgMusic = new Audio('audio/4379051-give-me-space-8294.mp3');
+bgMusic.loop = true;       
+bgMusic.volume = 0.2; // Achtergrondmuziek
+
+const shootSound = new Audio('audio/u_f09vejvoga-gun-shot-350315.mp3');
+shootSound.volume = 0.3; // Schietgeluid
+
+const gameOverSound = new Audio('audio/dragon-studio-game-over-retro-8bit-sfx-499656.mp3');
+gameOverSound.volume = 0.4; // Game over geluid
+
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
