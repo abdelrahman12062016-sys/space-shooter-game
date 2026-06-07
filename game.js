@@ -1,13 +1,3 @@
-// 🎵 AUDIO PADEN (Verwijst naar de audio folder in je repo)
-const bgMusic = new Audio('audio/background-music.mp3');
-bgMusic.loop = true;       
-bgMusic.volume = 0.2; // Achtergrondmuziek iets zachter gezet
-
-const shootSound = new Audio('audio/shoot.mp3');
-shootSound.volume = 0.3; // Schietgeluid
-
-const gameOverSound = new Audio('audio/gameover.mp3');
-gameOverSound.volume = 0.4; // Game over geluid
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
@@ -38,7 +28,18 @@ const mobileShootButton = document.getElementById("mobile-shoot-button");
 canvas.width = 800;
 canvas.height = 600;
 
+// 🎵 AUDIO PADEN (Verwijst naar de audio folder in je repo)
+const bgMusic = new Audio('audio/background-music.mp3');
+bgMusic.loop = true;       
+bgMusic.volume = 0.2; // Achtergrondmuziek iets zachter gezet
+
+const shootSound = new Audio('audio/shoot.mp3');
+shootSound.volume = 0.3; // Schietgeluid
+
+const gameOverSound = new Audio('audio/gameover.mp3');
+gameOverSound.volume = 0.4; // Game over geluid
 // PLAYER
+
 const player = {
   x: canvas.width / 2,
   y: canvas.height / 2,
