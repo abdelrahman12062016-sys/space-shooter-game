@@ -1,14 +1,3 @@
-// 🎵 AUDIO SECTION (Gekoppeld aan jouw exacte bestandsnamen)
-const bgMusic = new Audio('audio/4379051-give-me-space-8294.mp3');
-bgMusic.loop = true;       
-bgMusic.volume = 0.2; // Achtergrondmuziek
-
-const shootSound = new Audio('audio/u_f09vejvoga-gun-shot-350315.mp3');
-shootSound.volume = 0.3; // Schietgeluid
-
-const gameOverSound = new Audio('audio/dragon-studio-game-over-retro-8bit-sfx-499656.mp3');
-gameOverSound.volume = 0.4; // Game over geluid
-
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
@@ -36,12 +25,145 @@ const mobileModeButton = document.getElementById("mobile-mode-button");
 const mobileControls = document.getElementById("mobile-controls");
 const mobileShootButton = document.getElementById("mobile-shoot-button");
 
-canvas.width = 800;
-canvas.height = 600;
+// AUDIO
+const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+const audioContext = AudioContextConstructor ? new AudioContextConstructor() : null;
 
+function resumeAudioContext() {
+  if (!audioContext || audioContext.state !== "suspended") return;
+  audioContext.resume().catch(() => {});
+}
+
+function playTone({ frequency = 440, duration = 0.1, type = "sine", gain = 0.2, detune = 0 }) {
+  if (!audioContext) return;
+  const oscillator = audioContext.createOscillator();
+  const amplifier = audioContext.createGain();
+
+  oscillator.type = type;
+  oscillator.frequency.value = frequency;
+  oscillator.detune.value = detune;
+  amplifier.gain.value = gain;
+
+  oscillator.connect(amplifier);
+  amplifier.connect(audioContext.destination);
+
+  const now = audioContext.currentTime;
+  oscillator.start(now);
+  oscillator.stop(now + duration);
+}
+
+function playAudio(name) {
+  resumeAudioContext();
+
+  if (name === "start") {
+    playTone({ frequency: 220, duration: 0.18, type: "triangle", gain: 0.16 });
+    setTimeout(() => playTone({ frequency: 330, duration: 0.12, type: "triangle", gain: 0.14 }), 120);
+  } else if (name === "shoot") {
+    playTone({ frequency: 880, duration: 0.08, type: "square", gain: 0.09, detune: -120 });
+  } else if (name === "gameover") {
+    playTone({ frequency: 120, duration: 0.35, type: "sawtooth", gain: 0.24 });
+    setTimeout(() => playTone({ frequency: 180, duration: 0.2, type: "sine", gain: 0.12 }), 140);
+  }
+}
+
+let backgroundMusicGain = null;
+let backgroundMusicInterval = null;
+let musicRootIndex = 0;
+
+function stopBackgroundMusic() {
+  if (!audioContext || !backgroundMusicGain) return;
+
+  if (backgroundMusicInterval) {
+    clearInterval(backgroundMusicInterval);
+    backgroundMusicInterval = null;
+  }
+
+  const now = audioContext.currentTime;
+  backgroundMusicGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+  setTimeout(() => {
+    if (backgroundMusicGain) {
+      backgroundMusicGain.disconnect();
+      backgroundMusicGain = null;
+    }
+  }, 600);
+}
+
+function playAmbientChord() {
+  if (!audioContext || !backgroundMusicGain) return;
+
+  const chords = [
+    [220, 277, 329],
+    [196, 247, 294],
+    [174, 220, 262],
+    [185, 247, 311]
+  ];
+  const chord = chords[musicRootIndex % chords.length];
+  musicRootIndex += 1;
+
+  chord.forEach((frequency, index) => {
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+    oscillator.type = index === 0 ? "triangle" : "sine";
+    oscillator.frequency.value = frequency;
+    gain.gain.value = 0.0;
+
+    oscillator.connect(gain);
+    gain.connect(backgroundMusicGain);
+
+    const now = audioContext.currentTime;
+    gain.gain.setValueAtTime(0.0, now);
+    gain.gain.linearRampToValueAtTime(0.04 / (index + 1), now + 0.2);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.4);
+
+    oscillator.start(now);
+    oscillator.stop(now + 4.5);
+  });
+}
+
+function startBackgroundMusic() {
+  if (!audioContext || backgroundMusicGain) return;
+  resumeAudioContext();
+
+  backgroundMusicGain = audioContext.createGain();
+  backgroundMusicGain.gain.value = 0.08;
+  backgroundMusicGain.connect(audioContext.destination);
+
+  playAmbientChord();
+  backgroundMusicInterval = setInterval(playAmbientChord, 3200);
+}
+
+function resizeCanvas() {
+  const width = Math.max(600, Math.min(1000, window.innerWidth - 40));
+  const height = Math.max(450, Math.min(700, window.innerHeight - 40));
+  canvas.width = width;
+  canvas.height = height;
+
+  player.x = canvas.width / 2;
+  player.y = canvas.height / 2;
+
+  if (stars.length === 0) {
+    for (let i = 0; i < 90; i++) {
+      stars.push({
+        x: Math.random() * canvas.width,
+        y: Math.random() * canvas.height,
+        size: Math.random() * 2 + 1,
+        speed: Math.random() * 0.4 + 0.15
+      });
+    }
+  } else {
+    stars.forEach(star => {
+      star.x = Math.random() * canvas.width;
+      star.y = Math.random() * canvas.height;
+    });
+  }
+}
+
+window.addEventListener("resize", resizeCanvas);
+
+// PLAYER
 const player = {
-  x: canvas.width / 2,
-  y: canvas.height / 2,
+  x: 0,
+  y: 0,
   size: 20,
   speed: 4
 };
@@ -128,6 +250,9 @@ function startGame() {
     clearInterval(powerUpSpawnTimer);
   }
 
+  playAudio("start");
+  startBackgroundMusic();
+
   enemySpawnTimer = setInterval(spawnEnemy, 1500);
   powerUpSpawnTimer = setInterval(spawnPowerUp, 10000);
 }
@@ -143,6 +268,12 @@ function togglePause() {
   pauseScreen.classList.toggle("hidden", !gamePaused);
   pauseButton.classList.toggle("paused", gamePaused);
   updateMobileControls();
+
+  if (gamePaused) {
+    stopBackgroundMusic();
+  } else {
+    startBackgroundMusic();
+  }
 }
 
 pauseButton.addEventListener("click", togglePause);
@@ -165,6 +296,8 @@ function leaveGame() {
   pauseButton.classList.remove("paused");
   updateHud();
   updateMobileControls();
+
+  stopBackgroundMusic();
 
   if (enemySpawnTimer) {
     clearInterval(enemySpawnTimer);
@@ -251,6 +384,8 @@ function endGame() {
   pauseButton.classList.remove("paused");
   updateMobileControls();
 
+  stopBackgroundMusic();
+
   if (enemySpawnTimer) {
     clearInterval(enemySpawnTimer);
     enemySpawnTimer = null;
@@ -260,6 +395,8 @@ function endGame() {
     clearInterval(powerUpSpawnTimer);
     powerUpSpawnTimer = null;
   }
+
+  playAudio("gameover");
 }
 
 // INPUT
@@ -271,12 +408,9 @@ document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 let mouse = { x: 0, y: 0 };
 let bullets = [];
 let enemies = [];
-const stars = Array.from({ length: 90 }, () => ({
-  x: Math.random() * canvas.width,
-  y: Math.random() * canvas.height,
-  size: Math.random() * 2 + 1,
-  speed: Math.random() * 0.4 + 0.15
-}));
+const stars = [];
+
+resizeCanvas();
 
 // MOUSE POSITION
 canvas.addEventListener("mousemove", (e) => {
@@ -303,6 +437,8 @@ function shootAt(targetX, targetY) {
     dy: Math.sin(angle) * 8,
     size: 5
   });
+
+  playAudio("shoot");
 }
 
 function shootNearestEnemy() {
@@ -458,7 +594,7 @@ function update() {
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x;
     let dy = player.y - e.y;
-    let dist = Math.sqrt(dx * dx + dy * dy);
+    let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
     e.x += (dx / dist) * e.speed;
     e.y += (dy / dist) * e.speed;
