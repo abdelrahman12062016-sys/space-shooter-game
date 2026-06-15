@@ -1,31 +1,42 @@
 // ==========================================
-// 1. INLOG & ADMIN STATUS (NIEUW)
+// INLOG LOGICA & JOUW CUSTOM ACCOUNTS
 // ==========================================
 let isAdmin = false;
 let isLoggedIn = false;
 
 function checkLogin() {
-  const user = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
+  const user = document.getElementById("username").value.trim();
+  const pass = document.getElementById("password").value.trim();
   const errorText = document.getElementById("login-error");
 
-  // Pas hier eventueel je wachtwoord aan
-  if (user === "admin" && pass === "space123") {
+  // Account 1: darianmeyer
+  if (user === "darianmeyer" && pass === "darianadmin6767") {
     isAdmin = true;
     isLoggedIn = true;
-    alert("Welkom Admin! Druk tijdens het spelen op de 'M'-toets voor het admin-commando menu.");
+    alert("Welkom Darian! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     document.getElementById("login-screen").style.display = "none";
-  } else if (user === "speler" && pass === "start123") {
-    isAdmin = false;
+  } 
+  // Account 2: abdelamr
+  else if (user === "abdelamr" && pass === "abdelamradmin6767") {
+    isAdmin = true;
     isLoggedIn = true;
+    alert("Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     document.getElementById("login-screen").style.display = "none";
-  } else {
-    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord!";
+  } 
+  // Account 3: abdullahminihoofd
+  else if (user === "abdullahminihoofd" && pass === "abdull123admin") {
+    isAdmin = true;
+    isLoggedIn = true;
+    alert("Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
+    document.getElementById("login-screen").style.display = "none";
+  } 
+  else {
+    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
   }
 }
 
 // ==========================================
-// JOUW ORIGINELE VARIABELEN & ELEMENTEN
+// JOUW EIGEN SPEL ELEMENTEN
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -248,9 +259,9 @@ function addScore(points) {
 }
 
 function startGame() {
-  // Zorg dat spelers niet stiekem kunnen starten zonder in te loggen
+  // Beveiliging: Je MOET ingelogd zijn
   if (!isLoggedIn) {
-    alert("Je moet eerst inloggen!");
+    alert("Je moet eerst inloggen bro!");
     return;
   }
 
@@ -439,7 +450,7 @@ let keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
   
-  // ONDERSCHEP DE M-TOETS VOOR HET ADMIN COMMANDO
+  // KIJK OF HIER DE M-TOETS WORDT INGEDRUKT DOOR EEN ADMIN
   if (isAdmin && e.key.toLowerCase() === "m") {
     executeAdminCommand();
   }
@@ -812,7 +823,7 @@ function loop() {
 }
 
 // ==========================================
-// 3. ADMIN COMMANDO UITVOERING (NIEUW)
+// ADMIN COMMANDO CODE
 // ==========================================
 function executeAdminCommand() {
   let command = prompt("Voer een admin commando in:\n(Typ: 'godmode' of 'score')");
@@ -822,23 +833,22 @@ function executeAdminCommand() {
   switch (command.toLowerCase().trim()) {
     case "godmode":
       lives = 9999;
-      // Zorg er ook voor dat de speler direct een schild krijgt
       activePowerUp = {
         type: "shield",
-        expiresAt: Date.now() + 99999999 // Extreem lange tijd
+        expiresAt: Date.now() + 99999999
       };
       player.invulnerable = true;
       updateHud();
-      alert("Godmode geactiveerd! 9999 levens en oneindig schild.");
+      alert("Godmode AAN! 9999 levens + oneindig schild geactiveerd.");
       break;
 
     case "score":
       addScore(5000);
-      alert("5000 punten toegevoegd aan je score!");
+      alert("5000 punten erbij geknald!");
       break;
 
     default:
-      alert("Onbekend admin commando. Typ 'godmode' of 'score'.");
+      alert("Onbekend commando. Type 'godmode' of 'score'.");
   }
 }
 
