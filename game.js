@@ -1,3 +1,32 @@
+// ==========================================
+// 1. INLOG & ADMIN STATUS (NIEUW)
+// ==========================================
+let isAdmin = false;
+let isLoggedIn = false;
+
+function checkLogin() {
+  const user = document.getElementById("username").value;
+  const pass = document.getElementById("password").value;
+  const errorText = document.getElementById("login-error");
+
+  // Pas hier eventueel je wachtwoord aan
+  if (user === "admin" && pass === "space123") {
+    isAdmin = true;
+    isLoggedIn = true;
+    alert("Welkom Admin! Druk tijdens het spelen op de 'M'-toets voor het admin-commando menu.");
+    document.getElementById("login-screen").style.display = "none";
+  } else if (user === "speler" && pass === "start123") {
+    isAdmin = false;
+    isLoggedIn = true;
+    document.getElementById("login-screen").style.display = "none";
+  } else {
+    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord!";
+  }
+}
+
+// ==========================================
+// JOUW ORIGINELE VARIABELEN & ELEMENTEN
+// ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const hud = document.getElementById("hud");
@@ -219,6 +248,12 @@ function addScore(points) {
 }
 
 function startGame() {
+  // Zorg dat spelers niet stiekem kunnen starten zonder in te loggen
+  if (!isLoggedIn) {
+    alert("Je moet eerst inloggen!");
+    return;
+  }
+
   lives = 3;
   score = 0;
   gameOver = false;
@@ -401,7 +436,14 @@ function endGame() {
 
 // INPUT
 let keys = {};
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+document.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+  
+  // ONDERSCHEP DE M-TOETS VOOR HET ADMIN COMMANDO
+  if (isAdmin && e.key.toLowerCase() === "m") {
+    executeAdminCommand();
+  }
+});
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 // MOUSE + SHOOT
@@ -574,7 +616,7 @@ function update() {
   // MOVE
   if (keys["w"]) player.y -= player.speed;
   if (keys["s"]) player.y += player.speed;
-    if (keys["a"]) player.x -= player.speed;
+  if (keys["a"]) player.x -= player.speed;
   if (keys["d"]) player.x += player.speed;
 
   clampPlayer();
@@ -753,14 +795,13 @@ function draw() {
     ctx.fillText(activePowerUp.type === "shield" ? "Shield Active!" : "Speed Boost!", 10, 60);
   }
 
-  // 👇 FONT FIX (BELANGRIJK)
+  // FONT FIX
   ctx.font = "16px Arial";
   ctx.fillStyle = "white";
 
   ctx.fillText("Score: " + score, 10, 20);
   ctx.fillText("Lives: " + lives, 10, 40);
   updateHud();
-
 }
 
 // LOOP
@@ -770,7 +811,38 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
+// ==========================================
+// 3. ADMIN COMMANDO UITVOERING (NIEUW)
+// ==========================================
+function executeAdminCommand() {
+  let command = prompt("Voer een admin commando in:\n(Typ: 'godmode' of 'score')");
+
+  if (command === null) return;
+
+  switch (command.toLowerCase().trim()) {
+    case "godmode":
+      lives = 9999;
+      // Zorg er ook voor dat de speler direct een schild krijgt
+      activePowerUp = {
+        type: "shield",
+        expiresAt: Date.now() + 99999999 // Extreem lange tijd
+      };
+      player.invulnerable = true;
+      updateHud();
+      alert("Godmode geactiveerd! 9999 levens en oneindig schild.");
+      break;
+
+    case "score":
+      addScore(5000);
+      alert("5000 punten toegevoegd aan je score!");
+      break;
+
+    default:
+      alert("Onbekend admin commando. Typ 'godmode' of 'score'.");
+  }
+}
+
+// START DE GAME LOOPS EN UPDATES
 loop();
 updateHud();
 updateControlModeButtons();
- 
