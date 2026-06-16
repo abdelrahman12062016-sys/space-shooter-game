@@ -1,42 +1,107 @@
 // ==========================================
-// INLOG LOGICA & JOUW CUSTOM ACCOUNTS
+// GEAVANCEERDE LOG IN & SIGN UP FEATURE
 // ==========================================
 let isAdmin = false;
 let isLoggedIn = false;
 
-function checkLogin() {
-  const user = document.getElementById("username").value.trim();
-  const pass = document.getElementById("password").value.trim();
+// Wisselen tussen schermen
+function showSignUp() {
+  document.getElementById("login-box").style.display = "none";
+  document.getElementById("signup-box").style.display = "flex";
+  document.getElementById("login-error").innerText = "";
+}
+
+function showLogin() {
+  document.getElementById("signup-box").style.display = "none";
+  document.getElementById("login-box").style.display = "flex";
+  document.getElementById("login-error").innerText = "";
+}
+
+// SIGN UP (REGISTREREN) FUNCTION
+function checkSignUp() {
+  const newUser = document.getElementById("new-username").value.trim().toLowerCase();
+  const newPass = document.getElementById("new-password").value.trim();
   const errorText = document.getElementById("login-error");
 
-  // Account 1: darianmeyer
+  if (newUser === "" || newPass === "") {
+    errorText.innerText = "Vul alle velden in, domy!";
+    return;
+  }
+
+  // Check of de naam al bezet is door de vaste admins
+  if (newUser === "darianmeyer" || newUser === "abdelamr" || newUser === "abdullahminihoofd") {
+    errorText.innerText = "Deze legendarische admin naam kun je niet stelen!";
+    return;
+  }
+
+  // Haal database op uit browsergeheugen, of maak een lege lijst als die nog niet bestaat
+  let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
+
+  // Check of de naam al bezet is door een andere geregistreerde speler
+  if (registeredUsers[newUser]) {
+    errorText.innerText = "Deze gebruikersnaam bestaat al!";
+    return;
+  }
+
+  // Sla het nieuwe account op
+  registeredUsers[newUser] = newPass;
+  localStorage.setItem("spaceGameUsers", JSON.stringify(registeredUsers));
+
+  errorText.style.color = "#00e5ff";
+  errorText.innerText = "Account succesvol gemaakt! Log nu in.";
+  
+  // Wis de inputvelden en ga terug naar login
+  document.getElementById("new-username").value = "";
+  document.getElementById("new-password").value = "";
+  setTimeout(showLogin, 1500);
+}
+
+// LOG IN FUNCTION
+function checkLogin() {
+  const user = document.getElementById("username").value.trim().toLowerCase();
+  const pass = document.getElementById("password").value.trim();
+  const errorText = document.getElementById("login-error");
+  errorText.style.color = "red"; // reset kleur naar rood voor fouten
+
+  // 1. Check de vaste Hoofd-Admins
   if (user === "darianmeyer" && pass === "darianadmin6767") {
     isAdmin = true;
     isLoggedIn = true;
     alert("Welkom Darian! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     document.getElementById("login-screen").style.display = "none";
+    return;
   } 
-  // Account 2: abdelamr
-  else if (user === "abdelamr" && pass === "abdelamradmin6767") {
+  if (user === "abdelamr" && pass === "abdelamradmin6767") {
     isAdmin = true;
     isLoggedIn = true;
     alert("Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     document.getElementById("login-screen").style.display = "none";
+    return;
   } 
-  // Account 3: abdullahminihoofd
-  else if (user === "abdullahminihoofd" && pass === "abdull123admin") {
+  if (user === "abdullahminihoofd" && pass === "abdull123admin") {
     isAdmin = true;
     isLoggedIn = true;
     alert("Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     document.getElementById("login-screen").style.display = "none";
+    return;
   } 
-  else {
-    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord!";
+
+  // 2. Check de geregistreerde normale spelers (uit localStorage)
+  let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
+  
+  if (registeredUsers[user] && registeredUsers[user] === pass) {
+    isAdmin = false; // Normale spelers krijgen geen cheats!
+    isLoggedIn = true;
+    document.getElementById("login-screen").style.display = "none";
+    return;
   }
+
+  // Als niks klopt:
+  errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
 // ==========================================
-// JOUW EIGEN SPEL ELEMENTEN
+// JOUW EIGEN SPEL ELEMENTEN & CODE
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -259,7 +324,6 @@ function addScore(points) {
 }
 
 function startGame() {
-  // Beveiliging: Je MOET ingelogd zijn
   if (!isLoggedIn) {
     alert("Je moet eerst inloggen bro!");
     return;
@@ -450,7 +514,6 @@ let keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
   
-  // KIJK OF HIER DE M-TOETS WORDT INGEDRUKT DOOR EEN ADMIN
   if (isAdmin && e.key.toLowerCase() === "m") {
     executeAdminCommand();
   }
@@ -822,9 +885,7 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// ==========================================
 // ADMIN COMMANDO CODE
-// ==========================================
 function executeAdminCommand() {
   let command = prompt("Voer een admin commando in:\n(Typ: 'godmode' of 'score')");
 
