@@ -5,7 +5,6 @@ let isAdmin = false;
 let isLoggedIn = false;
 let currentLoggedInUser = ""; 
 
-// Wisselen tussen schermen
 function showSignUp() {
   document.getElementById("login-box").style.display = "none";
   document.getElementById("signup-box").style.display = "flex";
@@ -18,7 +17,6 @@ function showLogin() {
   document.getElementById("login-error").innerText = "";
 }
 
-// UPDATE EN TOON HET LEADERBOARD
 function renderLeaderboards() {
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
   let sortableScores = [];
@@ -49,13 +47,10 @@ function renderLeaderboards() {
   }
 }
 
-// SAVE SCORE NA GAME OVER
 function savePlayerScore(finalScore) {
   if (!currentLoggedInUser) return;
-
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
   let currentHighScore = scoresData[currentLoggedInUser] || 0;
-
   if (finalScore > currentHighScore) {
     scoresData[currentLoggedInUser] = finalScore;
     localStorage.setItem("spaceGameLeaderboard", JSON.stringify(scoresData));
@@ -63,7 +58,6 @@ function savePlayerScore(finalScore) {
   renderLeaderboards();
 }
 
-// SIGN UP (REGISTREREN) FUNCTION
 function checkSignUp() {
   const newUser = document.getElementById("new-username").value.trim().toLowerCase();
   const newPass = document.getElementById("new-password").value.trim();
@@ -73,14 +67,12 @@ function checkSignUp() {
     errorText.innerText = "Vul alle velden in, domy!";
     return;
   }
-
   if (newUser === "darianmeyer" || newUser === "abdelamr" || newUser === "abdullahminihoofd") {
     errorText.innerText = "Deze legendarische admin naam kun je niet stelen!";
     return;
   }
 
   let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
-
   if (registeredUsers[newUser]) {
     errorText.innerText = "Deze gebruikersnaam bestaat al!";
     return;
@@ -88,16 +80,13 @@ function checkSignUp() {
 
   registeredUsers[newUser] = newPass;
   localStorage.setItem("spaceGameUsers", JSON.stringify(registeredUsers));
-
   errorText.style.color = "#00e5ff";
   errorText.innerText = "Account succesvol gemaakt! Log nu in.";
-  
   document.getElementById("new-username").value = "";
   document.getElementById("new-password").value = "";
   setTimeout(showLogin, 1500);
 }
 
-// LOG IN FUNCTION
 function checkLogin() {
   const user = document.getElementById("username").value.trim().toLowerCase();
   const pass = document.getElementById("password").value.trim();
@@ -113,7 +102,6 @@ function checkLogin() {
     if (adminStatus) {
       document.getElementById("admin-touch-button").style.display = "block";
     }
-
     if (welcomeMessage) alert(welcomeMessage);
     document.getElementById("login-screen").style.display = "none";
     renderLeaderboards(); 
@@ -133,31 +121,24 @@ function checkLogin() {
   } 
 
   let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
-  
   if (registeredUsers[user] && registeredUsers[user] === pass) {
     loginSuccess(user, false, null);
     return;
   }
-
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
-// ADMIN INTERFACE INTERACTIE LOGICA
+// STRENG EN RECHT DOOR ZEE: ALLEEN NOG MAAR GODMODE EN SCORE OPENT HIER
 function toggleAdminPanel() {
   if (!isAdmin) return;
   const panel = document.getElementById("hacker-admin-panel");
-  
   if (panel.style.display === "none" || panel.style.display === "") {
     panel.style.display = "block";
     document.getElementById("admin-panel-user").innerText = currentLoggedInUser;
-    if (gameStarted && !gamePaused && !gameOver) {
-      togglePause();
-    }
+    if (gameStarted && !gamePaused && !gameOver) togglePause();
   } else {
     panel.style.display = "none";
-    if (gameStarted && gamePaused && !gameOver) {
-      togglePause();
-    }
+    if (gameStarted && gamePaused && !gameOver) togglePause();
   }
 }
 
@@ -168,17 +149,13 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
 
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
-
-  switch (cheatName) {
-    case "godmode":
-      lives = 9999;
-      activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
-      player.invulnerable = true;
-      updateHud();
-      break;
-    case "score":
-      addScore(5000);
-      break;
+  if (cheatName === "godmode") {
+    lives = 9999;
+    activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
+    player.invulnerable = true;
+    updateHud();
+  } else if (cheatName === "score") {
+    addScore(5000);
   }
 }
 
@@ -253,18 +230,10 @@ let musicRootIndex = 0;
 
 function stopBackgroundMusic() {
   if (!audioContext || !backgroundMusicGain) return;
-  if (backgroundMusicInterval) {
-    clearInterval(backgroundMusicInterval);
-    backgroundMusicInterval = null;
-  }
+  if (backgroundMusicInterval) { clearInterval(backgroundMusicInterval); backgroundMusicInterval = null; }
   const now = audioContext.currentTime;
   backgroundMusicGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
-  setTimeout(() => {
-    if (backgroundMusicGain) {
-      backgroundMusicGain.disconnect();
-      backgroundMusicGain = null;
-    }
-  }, 600);
+  setTimeout(() => { if (backgroundMusicGain) { backgroundMusicGain.disconnect(); backgroundMusicGain = null; } }, 600);
 }
 
 function playAmbientChord() {
@@ -284,8 +253,7 @@ function playAmbientChord() {
     gain.gain.setValueAtTime(0.0, now);
     gain.gain.linearRampToValueAtTime(0.04 / (index + 1), now + 0.2);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.4);
-    oscillator.start(now);
-    oscillator.stop(now + 4.5);
+    oscillator.start(now); oscillator.stop(now + 4.5);
   });
 }
 
@@ -302,25 +270,15 @@ function startBackgroundMusic() {
 function resizeCanvas() {
   const width = Math.max(600, Math.min(1000, window.innerWidth - 40));
   const height = Math.max(450, Math.min(700, window.innerHeight - 40));
-  canvas.width = width;
-  canvas.height = height;
-  player.x = canvas.width / 2;
-  player.y = canvas.height / 2;
+  canvas.width = width; canvas.height = height;
+  player.x = canvas.width / 2; player.y = canvas.height / 2;
 
   if (stars.length === 0) {
     for (let i = 0; i < 90; i++) {
-      stars.push({
-        x: Math.random() * canvas.width,
-        y: Math.random() * canvas.height,
-        size: Math.random() * 2 + 1,
-        speed: Math.random() * 0.4 + 0.15
-      });
+      stars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 1, speed: Math.random() * 0.4 + 0.15 });
     }
   } else {
-    stars.forEach(star => {
-      star.x = Math.random() * canvas.width;
-      star.y = Math.random() * canvas.height;
-    });
+    stars.forEach(star => { star.x = Math.random() * canvas.width; star.y = Math.random() * canvas.height; });
   }
 }
 
@@ -329,16 +287,10 @@ window.addEventListener("resize", resizeCanvas);
 const player = { x: 0, y: 0, size: 20, speed: 4 };
 function getPlayerCenter() { return { x: player.x + player.size / 2, y: player.y + player.size / 2 }; }
 
-let lives = 3;
-let score = 0;
-let gameOver = false;
-let gameStarted = false;
-let gamePaused = false;
+let lives = 3; let score = 0; let gameOver = false; let gameStarted = false; let gamePaused = false;
 let controlMode = localStorage.getItem("controlMode") || "pc";
-let enemySpawnTimer = null;
-let powerUpSpawnTimer = null;
-let powerUps = [];
-let activePowerUp = null;
+let enemySpawnTimer = null; let powerUpSpawnTimer = null;
+let powerUps = []; let activePowerUp = null;
 
 function updateHud() {
   scoreElement.textContent = score;
@@ -361,36 +313,23 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
-function addScore(points) {
-  score += points;
-  updateHud();
-}
+function addScore(points) { score += points; updateHud(); }
 
 function startGame() {
-  if (!isLoggedIn) {
-    alert("Je moet eerst inloggen bro!");
-    return;
-  }
+  if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
   lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false;
   bullets = []; enemies = []; powerUps = []; activePowerUp = null;
   player.speed = 4; player.invulnerable = false;
   player.x = canvas.width / 2; player.y = canvas.height / 2;
-  hud.classList.remove("hidden");
-  startScreen.classList.add("hidden");
-  gameOverScreen.classList.add("hidden");
-  pauseScreen.classList.add("hidden");
-  pauseButton.classList.remove("hidden");
-  pauseButton.classList.remove("paused");
+  hud.classList.remove("hidden"); startScreen.classList.add("hidden"); gameOverScreen.classList.add("hidden");
+  pauseScreen.classList.add("hidden"); pauseButton.classList.remove("hidden"); pauseButton.classList.remove("paused");
   settingsScreen.classList.add("hidden");
-  updateHud();
-  updateMobileControls();
+  updateHud(); updateMobileControls();
 
   if (enemySpawnTimer) clearInterval(enemySpawnTimer);
   if (powerUpSpawnTimer) clearInterval(powerUpSpawnTimer);
 
-  playAudio("start");
-  startBackgroundMusic();
-
+  playAudio("start"); startBackgroundMusic();
   enemySpawnTimer = setInterval(spawnEnemy, 1500);
   powerUpSpawnTimer = setInterval(spawnPowerUp, 10000);
 }
@@ -414,17 +353,10 @@ stayButton.addEventListener("click", togglePause);
 function leaveGame() {
   gameStarted = false; gameOver = false; gamePaused = false;
   bullets = []; enemies = []; lives = 3; score = 0;
-  startScreen.classList.remove("hidden");
-  hud.classList.add("hidden");
-  gameOverScreen.classList.add("hidden");
-  pauseScreen.classList.add("hidden");
-  settingsScreen.classList.add("hidden");
-  pauseButton.classList.add("hidden");
+  startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
+  pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
   pauseButton.classList.remove("paused");
-  updateHud();
-  updateMobileControls();
-  renderLeaderboards();
-  stopBackgroundMusic();
+  updateHud(); updateMobileControls(); renderLeaderboards(); stopBackgroundMusic();
   if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
   if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
 }
@@ -439,26 +371,16 @@ function updateControlModeButtons() {
 
 function openSettings() {
   settingsScreen.classList.remove("hidden");
-  if (gameStarted && !gameOver) {
-    gamePaused = true;
-    pauseScreen.classList.add("hidden");
-    pauseButton.classList.add("paused");
-  }
+  if (gameStarted && !gameOver) { gamePaused = true; pauseScreen.classList.add("hidden"); pauseButton.classList.add("paused"); }
   updateControlModeButtons();
 }
 
 function closeSettings() {
   settingsScreen.classList.add("hidden");
-  if (gameStarted && gamePaused && !gameOver) {
-    pauseScreen.classList.remove("hidden");
-  }
+  if (gameStarted && gamePaused && !gameOver) pauseScreen.classList.remove("hidden");
 }
 
-function setControlMode(mode) {
-  controlMode = mode;
-  localStorage.setItem("controlMode", controlMode);
-  updateControlModeButtons();
-}
+function setControlMode(mode) { controlMode = mode; localStorage.setItem("controlMode", controlMode); updateControlModeButtons(); }
 
 settingsButton.addEventListener("click", openSettings);
 fullscreenButton.addEventListener("click", toggleFullscreen);
@@ -467,35 +389,22 @@ pcModeButton.addEventListener("click", () => setControlMode("pc"));
 mobileModeButton.addEventListener("click", () => setControlMode("mobile"));
 
 document.addEventListener("fullscreenchange", () => {
-  if (document.fullscreenElement) {
-    fullscreenButton.textContent = "🗗";
-    fullscreenButton.title = "Exit Full Screen";
-  } else {
-    fullscreenButton.textContent = "⛶";
-    fullscreenButton.title = "Full Screen";
-  }
+  if (document.fullscreenElement) { fullscreenButton.textContent = "🗗"; fullscreenButton.title = "Exit Full Screen"; }
+  else { fullscreenButton.textContent = "⛶"; fullscreenButton.title = "Full Screen"; }
 });
 
 function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch((err) => console.error(err));
-  } else {
-    document.exitFullscreen();
-  }
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch((err) => console.error(err));
+  else document.exitFullscreen();
 }
 
 function endGame() {
   gameOver = true; gameStarted = false; gamePaused = false;
   finalScoreElement.textContent = score;
   savePlayerScore(score);
-  hud.classList.add("hidden");
-  gameOverScreen.classList.remove("hidden");
-  pauseScreen.classList.add("hidden");
-  settingsScreen.classList.add("hidden");
-  pauseButton.classList.add("hidden");
-  pauseButton.classList.remove("paused");
-  updateMobileControls();
-  stopBackgroundMusic();
+  hud.classList.add("hidden"); gameOverScreen.classList.remove("hidden"); pauseScreen.classList.add("hidden");
+  settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden"); pauseButton.classList.remove("paused");
+  updateMobileControls(); stopBackgroundMusic();
   if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
   if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
   playAudio("gameover");
@@ -504,23 +413,16 @@ function endGame() {
 let keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
-  if (isAdmin && e.key.toLowerCase() === "m") {
-    toggleAdminPanel();
-  }
+  if (isAdmin && e.key.toLowerCase() === "m") toggleAdminPanel();
 });
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-let mouse = { x: 0, y: 0 };
-let bullets = [];
-let enemies = [];
-const stars = [];
-
+let mouse = { x: 0, y: 0 }; let bullets = []; let enemies = []; const stars = [];
 resizeCanvas();
 
 canvas.addEventListener("mousemove", (e) => {
   const rect = canvas.getBoundingClientRect();
-  mouse.x = e.clientX - rect.left;
-  mouse.y = e.clientY - rect.top;
+  mouse.x = e.clientX - rect.left; mouse.y = e.clientY - rect.top;
 });
 
 canvas.addEventListener("click", () => {
@@ -538,11 +440,9 @@ function shootAt(targetX, targetY) {
 function shootNearestEnemy() {
   if (!gameStarted || gameOver || gamePaused) return;
   const center = getPlayerCenter();
-  let target = enemies[0];
-  let closestDistance = Infinity;
+  let target = enemies[0]; let closestDistance = Infinity;
   enemies.forEach(enemy => {
-    const dx = (enemy.x + enemy.size / 2) - center.x;
-    const dy = (enemy.y + enemy.size / 2) - center.y;
+    const dx = (enemy.x + enemy.size / 2) - center.x; const dy = (enemy.y + enemy.size / 2) - center.y;
     const distance = dx * dx + dy * dy;
     if (distance < closestDistance) { closestDistance = distance; target = enemy; }
   });
@@ -609,15 +509,11 @@ function update() {
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
-
-    e.x += (dx / dist) * e.speed; 
-    e.y += (dy / dist) * e.speed;
+    e.x += (dx / dist) * e.speed; e.y += (dy / dist) * e.speed;
 
     if (dist < player.size) {
       enemies.splice(ei, 1);
-      if (!activePowerUp || activePowerUp.type !== "shield") {
-        lives -= 1; if (lives <= 0) endGame();
-      }
+      if (!activePowerUp || activePowerUp.type !== "shield") { lives -= 1; if (lives <= 0) endGame(); }
     }
   });
 
@@ -629,9 +525,7 @@ function update() {
     return true;
   });
 
-  if (activePowerUp && Date.now() > activePowerUp.expiresAt) {
-    activePowerUp = null; player.speed = 4; player.invulnerable = false;
-  }
+  if (activePowerUp && Date.now() > activePowerUp.expiresAt) { activePowerUp = null; player.speed = 4; player.invulnerable = false; }
 
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
@@ -673,9 +567,7 @@ function draw() {
     ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
   });
 
-  bullets.forEach(b => {
-    ctx.fillStyle = "#fff176"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
-  });
+  bullets.forEach(b => { ctx.fillStyle = "#fff176"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); });
 
   powerUps.forEach(powerUp => {
     ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18; ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
