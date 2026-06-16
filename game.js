@@ -4,7 +4,7 @@
 let isAdmin = false;
 let isLoggedIn = false;
 let currentLoggedInUser = ""; 
-let timeFrozen = false; // State voor de Freeze cheat
+let timeFrozen = false; 
 
 function showSignUp() {
   document.getElementById("login-box").style.display = "none";
@@ -129,16 +129,15 @@ function checkLogin() {
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
+// TOGGLE ADMIN PANEEL (Laat pauzeknop met rust)
 function toggleAdminPanel() {
   if (!isAdmin) return;
   const panel = document.getElementById("hacker-admin-panel");
   if (panel.style.display === "none" || panel.style.display === "") {
     panel.style.display = "block";
     document.getElementById("admin-panel-user").innerText = currentLoggedInUser;
-    if (gameStarted && !gamePaused && !gameOver) togglePause();
   } else {
     panel.style.display = "none";
-    if (gameStarted && gamePaused && !gameOver) togglePause();
   }
 }
 
@@ -147,7 +146,7 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
   toggleAdminPanel();
 });
 
-// ADMIN CHEAT ENGINE LOGICA
+// CHEAT ENGINE
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
 
@@ -159,14 +158,14 @@ function triggerCheat(cheatName) {
   } else if (cheatName === "score") {
     addScore(5000);
   } else if (cheatName === "nuke") {
-    addScore(enemies.length * 10); // Punten voor elke weggevaagde alien
+    addScore(enemies.length * 10); 
     enemies = [];
     playTone({ frequency: 80, duration: 0.6, type: "sawtooth", gain: 0.3 });
   } else if (cheatName === "freeze") {
     timeFrozen = !timeFrozen;
     if (timeFrozen) {
       playTone({ frequency: 600, duration: 0.3, type: "sine", gain: 0.1 });
-      setTimeout(() => { timeFrozen = false; }, 8000); // Ontdooit automatisch na 8 sec
+      setTimeout(() => { timeFrozen = false; }, 8000); 
     } else {
       playTone({ frequency: 300, duration: 0.2, type: "sine", gain: 0.1 });
     }
@@ -327,7 +326,6 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
-// Score Toevoegen
 function addScore(points) { score += points; updateHud(); }
 
 function startGame() {
@@ -353,6 +351,7 @@ startButton.addEventListener("click", startGame);
 playAgainButton.addEventListener("click", startGame);
 gameOverLeaveButton.addEventListener("click", leaveGame);
 
+// PAUSE BLIJFT NU GEWOON WERKEN
 function togglePause() {
   if (!gameStarted || gameOver) return;
   gamePaused = !gamePaused;
@@ -503,7 +502,6 @@ function clampPlayer() {
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
 
-// ENGINE UPDATE LOOP
 function update() {
   if (!gameStarted || gameOver || gamePaused) return;
 
@@ -526,7 +524,6 @@ function update() {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
     
-    // Check of Freeze aanstaat
     if (!timeFrozen) {
       e.x += (dx / dist) * e.speed; 
       e.y += (dy / dist) * e.speed;
@@ -559,7 +556,6 @@ function update() {
   }
 }
 
-// ENGINE DRAW LOOP
 function draw() {
   const background = ctx.createLinearGradient(0, 0, 0, canvas.height);
   background.addColorStop(0, "#07122e"); background.addColorStop(1, "#050505");
@@ -609,7 +605,6 @@ function draw() {
     ctx.fillText(activePowerUp.type === "shield" ? "Shield Active!" : "Speed Boost!", 10, 60);
   }
 
-  // Visualiseer Freeze op scherm
   if (timeFrozen) {
     ctx.font = "20px Arial";
     ctx.fillStyle = "#00e5ff";
