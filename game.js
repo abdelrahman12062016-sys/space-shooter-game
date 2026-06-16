@@ -150,9 +150,6 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
   toggleAdminPanel();
 });
 
-// ==========================================
-// CRASH-PROOF ADMIN CHEATS INTERFACE
-// ==========================================
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
 
@@ -164,15 +161,12 @@ function triggerCheat(cheatName) {
   } else if (cheatName === "score") {
     addScore(5000);
   } else if (cheatName === "nuke") {
-    enemies = []; // Wis alle normale vijanden
-    
-    // Wis de baas instant uit zónder de score-loop te crashen
+    enemies = []; 
     if (currentBoss) {
       currentBoss = null; 
-      enemyBullets = []; // Haal ook direct zijn kogels weg
+      enemyBullets = []; 
       nextBossScore = (Math.floor(score / 100) + 1) * 100;
     }
-    
     playTone({ frequency: 80, duration: 0.6, type: "sawtooth", gain: 0.3 });
   } else if (cheatName === "freeze") {
     timeFrozen = !timeFrozen;
@@ -317,6 +311,8 @@ let lives = 3; let score = 0; let gameOver = false; let gameStarted = false; let
 let controlMode = localStorage.getItem("controlMode") || "pc";
 let enemySpawnTimer = null; let powerUpSpawnTimer = null;
 let powerUps = []; let activePowerUp = null;
+let activeWeapon = "normal"; // Kan zijn: "normal", "spread", "beam"
+let weaponExpiresAt = 0;
 
 function updateHud() {
   scoreElement.textContent = score;
@@ -325,10 +321,11 @@ function updateHud() {
   let userHighScore = scoresData[currentLoggedInUser] || 0;
   highScoreElement.textContent = userHighScore;
 
-  if (activePowerUp) {
+  // Update HUD status voor actieve effecten
+  if (Date.now() < weaponExpiresAt) {
+    powerUpStatusElement.textContent = activeWeapon.toUpperCase() + " SHOT!";
+  } else if (activePowerUp) {
     powerUpStatusElement.textContent = activePowerUp.type === "shield" ? "Shield active" : "Speed active";
-  } else if (powerUps.length > 0) {
-    powerUpStatusElement.textContent = powerUps[0].type === "shield" ? "Shield nearby" : "Speed nearby";
   } else {
     powerUpStatusElement.textContent = "None";
   }
@@ -339,19 +336,16 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
-// SCORE TRIGGER MET EXTREME HACK BEVEILIGING
 function addScore(points) { 
   score += points; 
   updateHud(); 
   
   if (score >= nextBossScore && !currentBoss) {
-    // Zet de volgende baas ALVAST klaar voor de toekomst om oneindige lussen te voorkomen
     nextBossScore = (Math.floor(score / 100) + 1) * 100;
     spawnBoss();
   }
 }
 
-// BOSS LOGICA FUNCTIES
 function spawnBoss() {
   enemies = []; 
   enemyBullets = [];
@@ -372,7 +366,7 @@ function spawnBoss() {
 function destroyBoss() {
   currentBoss = null;
   enemyBullets = [];
-  score += 25; // Handmatige veilige score verhoging zonder de loop te triggeren
+  score += 25; 
   updateHud();
   playTone({ frequency: 400, duration: 0.5, type: "triangle", gain: 0.2 });
 }
@@ -381,6 +375,7 @@ function startGame() {
   if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
   lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; powerUps = []; activePowerUp = null; enemyBullets = []; currentBoss = null;
+  activeWeapon = "normal"; weaponExpiresAt = 0;
   nextBossScore = 100;
   player.speed = 4; player.invulnerable = false;
   player.x = canvas.width / 2; player.y = canvas.height / 2;
@@ -394,7 +389,7 @@ function startGame() {
 
   playAudio("start"); startBackgroundMusic();
   enemySpawnTimer = setInterval(spawnEnemy, 1500);
-  powerUpSpawnTimer = setInterval(spawnPowerUp, 10000);
+  powerUpSpawnTimer = setInterval(spawnPowerUp, 7000); // Iets vaker spawnen voor actie!
 }
 
 startButton.addEventListener("click", startGame);
@@ -416,6 +411,7 @@ stayButton.addEventListener("click", togglePause);
 function leaveGame() {
   gameStarted = false; gameOver = false; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; enemyBullets = []; currentBoss = null; lives = 3; score = 0;
+  activeWeapon = "normal"; weaponExpiresAt = 0;
   startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
   pauseButton.classList.remove("paused");
@@ -493,11 +489,34 @@ canvas.addEventListener("click", () => {
   shootAt(mouse.x, mouse.y);
 });
 
+// NIEUWE GEAVANCEERDE SCHIET LOGICA (WAPEN TYPES)
 function shootAt(targetX, targetY) {
   const center = getPlayerCenter();
-  const angle = Math.atan2(targetY - center.y, targetX - center.x);
-  bullets.push({ x: center.x, y: center.y, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, size: 5 });
-  playAudio("shoot");
+  const baseAngle = Math.atan2(targetY - center.y, targetX - center.x);
+  
+  // Controleer of wapen-tijd voorbij is
+  if (Date.now() > weaponExpiresAt) {
+    activeWeapon = "normal";
+  }
+
+  if (activeWeapon === "normal") {
+    // Normaal schot: 1 gele kogel
+    bullets.push({ x: center.x, y: center.y, dx: Math.cos(baseAngle) * 8, dy: Math.sin(baseAngle) * 8, size: 5, isBeam: false });
+    playAudio("shoot");
+  } 
+  else if (activeWeapon === "spread") {
+    // Spread shot: 3 kogels in een waaier-vorm (-0.2 rad, 0 rad, +0.2 rad)
+    const angles = [baseAngle - 0.2, baseAngle, baseAngle + 0.2];
+    angles.forEach(angle => {
+      bullets.push({ x: center.x, y: center.y, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, size: 6, isBeam: false });
+    });
+    playTone({ frequency: 700, duration: 0.08, type: "square", gain: 0.1 });
+  } 
+  else if (activeWeapon === "beam") {
+    // Plasma Beam: 1 gigantische, dikke kogel die dwars door vijanden heen vliegt
+    bullets.push({ x: center.x, y: center.y, dx: Math.cos(baseAngle) * 11, dy: Math.sin(baseAngle) * 11, size: 24, isBeam: true });
+    playTone({ frequency: 400, duration: 0.15, type: "sawtooth", gain: 0.12 });
+  }
 }
 
 function shootNearestEnemy() {
@@ -536,17 +555,34 @@ function spawnEnemy() {
   enemies.push({ x: x, y: y, size: 20, speed: 1.5 });
 }
 
+// GEAVANCEERDE POWER-UP SPAWNS MET WAPENS
 function spawnPowerUp() {
   if (!gameStarted || gameOver || gamePaused) return;
   if (powerUps.length > 0) return;
-  const type = Math.random() < 0.5 ? "speed" : "shield";
-  powerUps.push({ x: Math.random() * (canvas.width - 60) + 30, y: Math.random() * (canvas.height - 60) + 30, size: 28, type, duration: 5000 });
+  
+  // Kansen verdeeld over 4 verschillende opties!
+  const rand = Math.random();
+  let type = "speed";
+  if (rand < 0.25) type = "speed";
+  else if (rand < 0.50) type = "shield";
+  else if (rand < 0.75) type = "spread";
+  else type = "beam";
+
+  powerUps.push({ x: Math.random() * (canvas.width - 60) + 30, y: Math.random() * (canvas.height - 60) + 30, size: 28, type, duration: 6000 });
 }
 
 function applyPowerUp(powerUp) {
-  activePowerUp = { ...powerUp, expiresAt: Date.now() + powerUp.duration };
-  if (powerUp.type === "speed") { player.speed = 7; addScore(2); }
-  else if (powerUp.type === "shield") { player.invulnerable = true; addScore(3); }
+  if (powerUp.type === "spread" || powerUp.type === "beam") {
+    activeWeapon = powerUp.type;
+    weaponExpiresAt = Date.now() + powerUp.duration;
+    addScore(5);
+    playTone({ frequency: 900, duration: 0.25, type: "sine", gain: 0.15 });
+  } else {
+    activePowerUp = { ...powerUp, expiresAt: Date.now() + powerUp.duration };
+    if (powerUp.type === "speed") { player.speed = 7; addScore(2); }
+    else if (powerUp.type === "shield") { player.invulnerable = true; addScore(3); }
+  }
+  updateHud();
 }
 
 function clampPlayer() {
@@ -641,24 +677,37 @@ function update() {
     return true;
   });
 
+  // Reset powerup verlopen checks
   if (activePowerUp && Date.now() > activePowerUp.expiresAt) { activePowerUp = null; player.speed = 4; player.invulnerable = false; }
+  if (activeWeapon !== "normal" && Date.now() > weaponExpiresAt) { activeWeapon = "normal"; }
 
-  // KOGEL ENEMY & BOSS HITS
+  // KOGEL HIT LOGICA (AANGEPAST VOOR DE LASER BEAM)
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
+    let bulletRemoved = false;
     
+    // Check hit op Boss
     if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
-      bullets.splice(bi, 1);
-      currentBoss.hp -= 1;
+      currentBoss.hp -= b.isBeam ? 3 : 1; // Laser beam doet 3x zoveel schade aan de baas!
       playTone({ frequency: 450, duration: 0.05, type: "sine", gain: 0.1 });
+      
+      if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; } // Laser snijdt door de baas heen!
       if (currentBoss.hp <= 0) { destroyBoss(); }
-      continue;
+      if (bulletRemoved) continue;
     }
 
+    // Check hit op kleine aliens
     for (let ei = enemies.length - 1; ei >= 0; ei--) {
       const e = enemies[ei];
       if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
-        enemies.splice(ei, 1); bullets.splice(bi, 1); addScore(1); break;
+        enemies.splice(ei, 1); 
+        addScore(1); 
+        
+        if (!b.isBeam) { // Alleen normale/spread kogels verdwijnen bij impact, de beam vliegt door!
+          bullets.splice(bi, 1); 
+          bulletRemoved = true; 
+        }
+        break;
       }
     }
   }
@@ -677,8 +726,14 @@ function draw() {
   const center = getPlayerCenter();
   const lookX = Math.sign(mouse.x - center.x); const lookY = Math.sign(mouse.y - center.y);
 
-  // SPELER
-  ctx.fillStyle = "#00e5ff"; ctx.fillRect(player.x, player.y, player.size, player.size);
+  // SPELER KLEUR VERANDERT OP BASIS VAN WAPEN
+  if (Date.now() < weaponExpiresAt) {
+    ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#ffaa00"; // Roze voor spread, oranje voor beam
+  } else {
+    ctx.fillStyle = "#00e5ff"; // Normaal blauw
+  }
+  
+  ctx.fillRect(player.x, player.y, player.size, player.size);
   ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.size, player.size);
 
   ctx.fillStyle = "white";
@@ -723,22 +778,47 @@ function draw() {
     ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
   });
 
-  bullets.forEach(b => { ctx.fillStyle = "#fff176"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); });
-
-  powerUps.forEach(powerUp => {
-    ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18; ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
-    if (powerUp.type === "speed") {
-      ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; stroke();
+  // BULLETS TEKENEN MET EFFECTEN
+  bullets.forEach(b => { 
+    if (b.isBeam) {
+      ctx.fillStyle = "#ff5500"; // Dikke vuorige plasma straal
+      ctx.shadowBlur = 15; ctx.shadowColor = "#ff1a00";
     } else {
-      ctx.fillStyle = "#03a9f4"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.fillText("S", -6, 7);
+      ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#fff176"; 
     }
-    ctx.shadowBlur = 0; ctx.restore();
+    ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill(); 
+    ctx.shadowBlur = 0;
   });
 
-  if (activePowerUp) {
+  // POWERUPS DESIGN
+  powerUps.forEach(powerUp => {
+    ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18;
+    
+    if (powerUp.type === "speed") {
+      ctx.shadowColor = "#76ff03"; ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+    } else if (powerUp.type === "shield") {
+      ctx.shadowColor = "#03a9f4"; ctx.fillStyle = "#03a9f4"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.fillText("S", -6, 7);
+    } else if (powerUp.type === "spread") {
+      // Waaier symbool (W)
+      ctx.shadowColor = "#ff007f"; ctx.fillStyle = "#ff007f"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText("W", -8, 6);
+    } else if (powerUp.type === "beam") {
+      // Laser symbool (L)
+      ctx.shadowColor = "#ffaa00"; ctx.fillStyle = "#ffaa00"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText("L", -5, 6);
+    }
+    ctx.restore();
+  });
+
+  if (Date.now() < weaponExpiresAt) {
+    ctx.font = "18px Arial"; ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#ffaa00";
+    ctx.fillText(activeWeapon === "spread" ? "🔥 SPREAD SHOT!" : "⚡ PLASMA BEAM!", 10, 60);
+  } else if (activePowerUp) {
     ctx.font = "18px Arial"; ctx.fillStyle = activePowerUp.type === "shield" ? "#03a9f4" : "#76ff03";
     ctx.fillText(activePowerUp.type === "shield" ? "Shield Active!" : "Speed Boost!", 10, 60);
   }
