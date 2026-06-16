@@ -1,7 +1,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Shooter space Game </title>
+  <title>Shooter space Game</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -46,6 +46,7 @@
       </button>
       <button id="settings-button" class="settings-button" title="Settings" aria-label="Settings">⚙</button>
       <button id="fullscreen-button" class="fullscreen-button" title="Full Screen" aria-label="Full Screen">⛶</button>
+      
       <div id="pause-screen" class="pause-screen hidden">
         <div class="pause-panel">
           <h1>Paused</h1>
@@ -59,6 +60,7 @@
           </div>
         </div>
       </div>
+      
       <div id="settings-screen" class="settings-screen hidden">
         <div class="settings-panel">
           <h1>Settings</h1>
@@ -76,6 +78,7 @@
           </button>
         </div>
       </div>
+      
       <div id="mobile-controls" class="mobile-controls hidden">
         <div class="mobile-dpad">
           <button data-move="w" title="Up" aria-label="Up">▲</button>
@@ -85,25 +88,36 @@
         </div>
         <button id="mobile-shoot-button" class="mobile-shoot-button" title="Shoot" aria-label="Shoot">⦿</button>
       </div>
+      
       <div id="start-screen" class="start-screen">
         <h1 class="game-logo">Shooter Space Game</h1>
         <div class="start-info">
-          <p>WASD to move</p>
-          <p>Click to shoot</p>
-          <p>Survive as long as possible</p>
+          <p>WASD to move | Click to shoot</p>
+          <p style="color: #00e5ff; font-weight: bold;">Ingetrapt als: <span id="hud-username">...</span></p>
         </div>
+        
+        <div style="background: rgba(255,255,255,0.1); border: 2px solid #00e5ff; padding: 15px; border-radius: 8px; margin: 15px 0; width: 280px; font-family: Arial, sans-serif;">
+          <h3 style="margin-top:0; color: #fff176; text-align:center; letter-spacing: 1px;">🏆 TOP 5 LEADERBOARD</h3>
+          <ol id="start-leaderboard" style="margin:0; padding-left: 25px; text-align:left; color: white; line-height: 1.6;"></ol>
+        </div>
+
         <button id="start-button" class="icon-button" title="Start Game" aria-label="Start Game">
           <span class="icon">▶</span>
         </button>
       </div>
+      
       <div id="game-over-screen" class="game-over-screen hidden">
         <div class="game-over-panel">
           <h1 class="game-logo">Shooter Space Game</h1>
           <h2>Game Over</h2>
           <p>Final Score</p>
           <div class="final-score" id="final-score">0</div>
-          <p>High Score</p>
-          <div class="game-over-high-score" id="final-high-score">0</div>
+          
+          <div style="background: rgba(0,0,0,0.4); border: 1px solid red; padding: 10px; border-radius: 8px; margin: 10px auto; width: 240px; font-family: Arial, sans-serif; font-size: 14px;">
+            <h4 style="margin: 0 0 5px 0; color: #ff304f;">🏆 Actuele Top 5</h4>
+            <ol id="gameover-leaderboard" style="margin:0; padding-left: 20px; text-align:left; color: white;"></ol>
+          </div>
+
           <div class="game-over-actions">
             <button id="play-again-button" class="icon-button restart" title="Play Again" aria-label="Play Again">
               <span class="icon">▶</span>
@@ -114,6 +128,7 @@
           </div>
         </div>
       </div>
+
     </div>
   </div>
   <script src="game.js"></script>
