@@ -4,7 +4,6 @@
 let isAdmin = false;
 let isLoggedIn = false;
 let currentLoggedInUser = ""; 
-let slomoActive = false;
 
 // Wisselen tussen schermen
 function showSignUp() {
@@ -179,33 +178,6 @@ function triggerCheat(cheatName) {
       break;
     case "score":
       addScore(5000);
-      break;
-    case "nuke":
-      if (enemies.length === 0) break;
-      addScore(enemies.length);
-      enemies = [];
-      playTone({ frequency: 100, duration: 0.5, type: "sawtooth", gain: 0.3 });
-      break;
-    case "slomo":
-      slomoActive = !slomoActive;
-      const slomoBtn = document.getElementById("btn-slomo");
-      if (slomoActive) {
-        slomoBtn.innerText = "⏳ SLOW-MOTION: ON";
-        slomoBtn.style.background = "rgba(0, 229, 255, 0.2)";
-        slomoBtn.style.borderColor = "#00e5ff";
-        slomoBtn.style.color = "#00e5ff";
-      } else {
-        slomoBtn.innerText = "⏳ SLOW-MOTION: OFF";
-        slomoBtn.style.background = "rgba(255, 48, 79, 0.1)";
-        slomoBtn.style.borderColor = "#ff304f";
-        slomoBtn.style.color = "white";
-      }
-      break;
-    case "instawin":
-      score = 99999;
-      updateHud();
-      toggleAdminPanel();
-      endGame();
       break;
   }
 }
@@ -638,10 +610,8 @@ function update() {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
-    // SLOW-MOTION EFFECT VOOR VIJANDEN
-    let huidigeSnelheid = slomoActive ? (e.speed * 0.25) : e.speed;
-    e.x += (dx / dist) * huidigeSnelheid; 
-    e.y += (dy / dist) * huidigeSnelheid;
+    e.x += (dx / dist) * e.speed; 
+    e.y += (dy / dist) * e.speed;
 
     if (dist < player.size) {
       enemies.splice(ei, 1);
