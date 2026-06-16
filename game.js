@@ -6,10 +6,16 @@ let isLoggedIn = false;
 let currentLoggedInUser = ""; 
 let timeFrozen = false; 
 
-// BOSS FIGHT VARIABELEN
+// BOSS FIGHT & VICTORY VARIABELEN
 let currentBoss = null;
 let nextBossScore = 100; // Eerste baas komt bij 100 punten
 let enemyBullets = [];   // Kogels afgeschoten door de baas
+let victoryAchieved = false; // Zorgt dat het scherm maar één keer popt bij 1000 punten
+let fireworks = [];          // Array voor vuurwerkdeeltjes
+
+const victoryScreen = document.getElementById("victory-screen");
+const victoryKeepPlayingButton = document.getElementById("victory-keep-playing-button");
+const victoryLeaveButton = document.getElementById("victory-leave-button");
 
 function showSignUp() {
   document.getElementById("login-box").style.display = "none";
@@ -335,9 +341,62 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
+// OVERWINNINGSSCHERM LOGICA (VICTORY SCREEN)
+function triggerVictory() {
+  victoryAchieved = true;
+  gamePaused = true; // Zet het spel op pauze voor de viering
+  victoryScreen.classList.remove("hidden");
+  document.getElementById("victory-score").textContent = score;
+  stopBackgroundMusic();
+  
+  // Overwinnings deuntje
+  playTone({ frequency: 523.25, duration: 0.15, type: "sine" }); 
+  setTimeout(() => playTone({ frequency: 659.25, duration: 0.15, type: "sine" }), 150); 
+  setTimeout(() => playTone({ frequency: 783.99, duration: 0.15, type: "sine" }), 300); 
+  setTimeout(() => playTone({ frequency: 1046.50, duration: 0.4, type: "sine" }), 450); 
+}
+
+function createFirework() {
+  const originX = Math.random() * canvas.width;
+  const originY = Math.random() * (canvas.height / 2);
+  const colors = ["#ff007f", "#00e5ff", "#76ff03", "#ffaa00", "#aa00ff", "#ffffff"];
+  const randomColor = colors[Math.floor(Math.random() * colors.length)];
+  
+  for (let i = 0; i < 30; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 4 + 2;
+    fireworks.push({
+      x: originX,
+      y: originY,
+      dx: Math.cos(angle) * speed,
+      dy: Math.sin(angle) * speed,
+      size: Math.random() * 3 + 1,
+      color: randomColor,
+      alpha: 1,
+      decay: Math.random() * 0.02 + 0.015
+    });
+  }
+}
+
+victoryKeepPlayingButton.addEventListener("click", () => {
+  victoryScreen.classList.add("hidden");
+  gamePaused = false; // Knallen maar, lekker oneindig doorspelen!
+  startBackgroundMusic();
+});
+
+victoryLeaveButton.addEventListener("click", () => {
+  victoryScreen.classList.add("hidden");
+  leaveGame();
+});
+
 function addScore(points) { 
   score += points; 
   updateHud(); 
+  
+  // Check voor 1000 punten overwinning
+  if (score >= 1000 && !victoryAchieved) {
+    triggerVictory();
+  }
   
   if (score >= nextBossScore && !currentBoss) {
     nextBossScore = (Math.floor(score / 100) + 1) * 100;
@@ -373,13 +432,16 @@ function destroyBoss() {
 function startGame() {
   if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
   lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false; timeFrozen = false;
+  victoryAchieved = false; fireworks = [];
   bullets = []; enemies = []; powerUps = []; activePowerUp = null; enemyBullets = []; currentBoss = null;
   activeWeapon = "normal"; weaponExpiresAt = 0;
   nextBossScore = 100;
   player.speed = 4; player.invulnerable = false;
   player.x = canvas.width / 2; player.y = canvas.height / 2;
+  
   hud.classList.remove("hidden"); startScreen.classList.add("hidden"); gameOverScreen.classList.add("hidden");
-  pauseScreen.classList.add("hidden"); pauseButton.classList.remove("hidden"); pauseButton.classList.remove("paused");
+  pauseScreen.classList.add("hidden"); victoryScreen.classList.add("hidden");
+  pauseButton.classList.remove("hidden"); pauseButton.classList.remove("paused");
   settingsScreen.classList.add("hidden");
   updateHud(); updateMobileControls();
 
@@ -410,10 +472,10 @@ stayButton.addEventListener("click", togglePause);
 function leaveGame() {
   gameStarted = false; gameOver = false; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; enemyBullets = []; currentBoss = null; lives = 3; score = 0;
-  activeWeapon = "normal"; weaponExpiresAt = 0;
+  activeWeapon = "normal"; weaponExpiresAt = 0; victoryAchieved = false; fireworks = [];
   startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
-  pauseButton.classList.remove("paused");
+  pauseButton.classList.remove("paused"); victoryScreen.classList.add("hidden");
   updateHud(); updateMobileControls(); renderLeaderboards(); stopBackgroundMusic();
   if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
   if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
@@ -583,6 +645,18 @@ function clampPlayer() {
 }
 
 function update() {
+  // Update vuurwerk deeltjes beweegt ALTIJD (ook tijdens overwinningspauze)
+  fireworks.forEach((f, index) => {
+    f.x += f.dx; f.y += f.dy;
+    f.dy += 0.05; f.alpha -= f.decay;
+    if (f.alpha <= 0) fireworks.splice(index, 1);
+  });
+
+  // Genereer continu nieuw vuurwerk tijdens het overwinningsscherm
+  if (victoryAchieved && Math.random() < 0.05) {
+    createFirework();
+  }
+
   if (!gameStarted || gameOver || gamePaused) return;
 
   stars.forEach(star => {
@@ -771,47 +845,46 @@ function draw() {
     ctx.shadowBlur = 0;
   });
 
-  // POWERUPS DESIGN (VOLLEDIG SCHERP EN MIDDENUITGELIJD)
+  // POWERUPS DESIGN
   powerUps.forEach(powerUp => {
     ctx.save(); 
     ctx.translate(powerUp.x, powerUp.y); 
     ctx.shadowBlur = 20;
-
     ctx.beginPath(); 
     ctx.arc(0, 0, powerUp.size / 1.2, 0, Math.PI * 2);
 
     if (powerUp.type === "speed") {
       ctx.shadowColor = "#76ff03"; ctx.fillStyle = "#1b5e20"; ctx.fill();
       ctx.strokeStyle = "#76ff03"; ctx.lineWidth = 3; ctx.stroke();
-      
       ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("S", 0, 0);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("S", 0, 0);
     } 
     else if (powerUp.type === "shield") {
       ctx.shadowColor = "#03a9f4"; ctx.fillStyle = "#0d47a1"; ctx.fill();
       ctx.strokeStyle = "#03a9f4"; ctx.lineWidth = 3; ctx.stroke();
-      
       ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("B", 0, 0); // B voor Bescherming/Schild
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("B", 0, 0);
     } 
     else if (powerUp.type === "spread") {
       ctx.shadowColor = "#ff007f"; ctx.fillStyle = "#880e4f"; ctx.fill();
       ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 3; ctx.stroke();
-      
       ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("W", 0, 0);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("W", 0, 0);
     } 
     else if (powerUp.type === "beam") {
       ctx.shadowColor = "#ffaa00"; ctx.fillStyle = "#e65100"; ctx.fill();
       ctx.strokeStyle = "#ffaa00"; ctx.lineWidth = 3; ctx.stroke();
-      
       ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("L", 0, 0);
+      ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText("L", 0, 0);
     }
+    ctx.restore();
+  });
+
+  // VUERWERK TEKENEN (WORDT BOVENOP ALLES GETEKEND)
+  fireworks.forEach(f => {
+    ctx.save();
+    ctx.globalAlpha = f.alpha; ctx.fillStyle = f.color;
+    ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2); ctx.fill();
     ctx.restore();
   });
 
