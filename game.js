@@ -4,6 +4,7 @@
 let isAdmin = false;
 let isLoggedIn = false;
 let currentLoggedInUser = ""; 
+let timeFrozen = false; // State voor de Freeze cheat
 
 function showSignUp() {
   document.getElementById("login-box").style.display = "none";
@@ -128,7 +129,6 @@ function checkLogin() {
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
-// STRENG EN RECHT DOOR ZEE: ALLEEN NOG MAAR GODMODE EN SCORE OPENT HIER
 function toggleAdminPanel() {
   if (!isAdmin) return;
   const panel = document.getElementById("hacker-admin-panel");
@@ -147,8 +147,10 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
   toggleAdminPanel();
 });
 
+// ADMIN CHEAT ENGINE LOGICA
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
+
   if (cheatName === "godmode") {
     lives = 9999;
     activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
@@ -156,6 +158,18 @@ function triggerCheat(cheatName) {
     updateHud();
   } else if (cheatName === "score") {
     addScore(5000);
+  } else if (cheatName === "nuke") {
+    addScore(enemies.length * 10); // Punten voor elke weggevaagde alien
+    enemies = [];
+    playTone({ frequency: 80, duration: 0.6, type: "sawtooth", gain: 0.3 });
+  } else if (cheatName === "freeze") {
+    timeFrozen = !timeFrozen;
+    if (timeFrozen) {
+      playTone({ frequency: 600, duration: 0.3, type: "sine", gain: 0.1 });
+      setTimeout(() => { timeFrozen = false; }, 8000); // Ontdooit automatisch na 8 sec
+    } else {
+      playTone({ frequency: 300, duration: 0.2, type: "sine", gain: 0.1 });
+    }
   }
 }
 
@@ -313,11 +327,12 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
+// Score Toevoegen
 function addScore(points) { score += points; updateHud(); }
 
 function startGame() {
   if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
-  lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false;
+  lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; powerUps = []; activePowerUp = null;
   player.speed = 4; player.invulnerable = false;
   player.x = canvas.width / 2; player.y = canvas.height / 2;
@@ -351,7 +366,7 @@ pauseButton.addEventListener("click", togglePause);
 stayButton.addEventListener("click", togglePause);
 
 function leaveGame() {
-  gameStarted = false; gameOver = false; gamePaused = false;
+  gameStarted = false; gameOver = false; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; lives = 3; score = 0;
   startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
@@ -399,7 +414,7 @@ function toggleFullscreen() {
 }
 
 function endGame() {
-  gameOver = true; gameStarted = false; gamePaused = false;
+  gameOver = true; gameStarted = false; gamePaused = false; timeFrozen = false;
   finalScoreElement.textContent = score;
   savePlayerScore(score);
   hud.classList.add("hidden"); gameOverScreen.classList.remove("hidden"); pauseScreen.classList.add("hidden");
@@ -488,6 +503,7 @@ function clampPlayer() {
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
 
+// ENGINE UPDATE LOOP
 function update() {
   if (!gameStarted || gameOver || gamePaused) return;
 
@@ -509,7 +525,12 @@ function update() {
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
-    e.x += (dx / dist) * e.speed; e.y += (dy / dist) * e.speed;
+    
+    // Check of Freeze aanstaat
+    if (!timeFrozen) {
+      e.x += (dx / dist) * e.speed; 
+      e.y += (dy / dist) * e.speed;
+    }
 
     if (dist < player.size) {
       enemies.splice(ei, 1);
@@ -538,6 +559,7 @@ function update() {
   }
 }
 
+// ENGINE DRAW LOOP
 function draw() {
   const background = ctx.createLinearGradient(0, 0, 0, canvas.height);
   background.addColorStop(0, "#07122e"); background.addColorStop(1, "#050505");
@@ -585,6 +607,13 @@ function draw() {
   if (activePowerUp) {
     ctx.font = "18px Arial"; ctx.fillStyle = activePowerUp.type === "shield" ? "#03a9f4" : "#76ff03";
     ctx.fillText(activePowerUp.type === "shield" ? "Shield Active!" : "Speed Boost!", 10, 60);
+  }
+
+  // Visualiseer Freeze op scherm
+  if (timeFrozen) {
+    ctx.font = "20px Arial";
+    ctx.fillStyle = "#00e5ff";
+    ctx.fillText("❄ TIME FROZEN ❄", canvas.width / 2 - 80, 30);
   }
 
   ctx.font = "16px Arial"; ctx.fillStyle = "white";
