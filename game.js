@@ -6,6 +6,11 @@ let isLoggedIn = false;
 let currentLoggedInUser = ""; 
 let timeFrozen = false; 
 
+// BOSS FIGHT VARIABELEN
+let currentBoss = null;
+let nextBossScore = 100; // Eerste baas komt bij 100 punten
+let enemyBullets = [];   // Kogels afgeschoten door de baas
+
 function showSignUp() {
   document.getElementById("login-box").style.display = "none";
   document.getElementById("signup-box").style.display = "flex";
@@ -129,7 +134,6 @@ function checkLogin() {
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
-// TOGGLE ADMIN PANEEL (Laat pauzeknop met rust)
 function toggleAdminPanel() {
   if (!isAdmin) return;
   const panel = document.getElementById("hacker-admin-panel");
@@ -146,7 +150,6 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
   toggleAdminPanel();
 });
 
-// CHEAT ENGINE
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
 
@@ -160,6 +163,10 @@ function triggerCheat(cheatName) {
   } else if (cheatName === "nuke") {
     addScore(enemies.length * 10); 
     enemies = [];
+    if (currentBoss) {
+      currentBoss.hp -= 15; // Nuke doet zware schade aan de boss!
+      if (currentBoss.hp <= 0) destroyBoss();
+    }
     playTone({ frequency: 80, duration: 0.6, type: "sawtooth", gain: 0.3 });
   } else if (cheatName === "freeze") {
     timeFrozen = !timeFrozen;
@@ -326,12 +333,45 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
-function addScore(points) { score += points; updateHud(); }
+function addScore(points) { 
+  score += points; 
+  updateHud(); 
+  
+  // Triggers Boss Fight bij elke 100 punten!
+  if (score >= nextBossScore && !currentBoss) {
+    spawnBoss();
+  }
+}
+
+// BOSS LOGICA FUNCTIES
+function spawnBoss() {
+  enemies = []; // Verwijder direct kleine vijanden
+  const levelMultiplier = Math.floor(nextBossScore / 100);
+  currentBoss = {
+    x: canvas.width / 2 - 35,
+    y: -80, // Komt van boven binnengevlogen
+    size: 70,
+    hp: 10 + (levelMultiplier * 5), // Wordt elke 100 punten sterker
+    maxHp: 10 + (levelMultiplier * 5),
+    speed: 1.0,
+    lastShot: Date.now(),
+    shootInterval: Math.max(800, 2000 - (levelMultiplier * 150)) // Schiet sneller per level
+  };
+  playTone({ frequency: 150, duration: 0.8, type: "sawtooth", gain: 0.25 });
+}
+
+function destroyBoss() {
+  currentBoss = null;
+  nextBossScore += 100; // Volgende baas bij +100 score
+  addScore(25); // Dikke bonus voor overwinning
+  playTone({ frequency: 400, duration: 0.5, type: "triangle", gain: 0.2 });
+}
 
 function startGame() {
   if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
   lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false; timeFrozen = false;
-  bullets = []; enemies = []; powerUps = []; activePowerUp = null;
+  bullets = []; enemies = []; powerUps = []; activePowerUp = null; enemyBullets = []; currentBoss = null;
+  nextBossScore = 100;
   player.speed = 4; player.invulnerable = false;
   player.x = canvas.width / 2; player.y = canvas.height / 2;
   hud.classList.remove("hidden"); startScreen.classList.add("hidden"); gameOverScreen.classList.add("hidden");
@@ -351,7 +391,6 @@ startButton.addEventListener("click", startGame);
 playAgainButton.addEventListener("click", startGame);
 gameOverLeaveButton.addEventListener("click", leaveGame);
 
-// PAUSE BLIJFT NU GEWOON WERKEN
 function togglePause() {
   if (!gameStarted || gameOver) return;
   gamePaused = !gamePaused;
@@ -366,7 +405,7 @@ stayButton.addEventListener("click", togglePause);
 
 function leaveGame() {
   gameStarted = false; gameOver = false; gamePaused = false; timeFrozen = false;
-  bullets = []; enemies = []; lives = 3; score = 0;
+  bullets = []; enemies = []; enemyBullets = []; currentBoss = null; lives = 3; score = 0;
   startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
   pauseButton.classList.remove("paused");
@@ -454,12 +493,15 @@ function shootAt(targetX, targetY) {
 function shootNearestEnemy() {
   if (!gameStarted || gameOver || gamePaused) return;
   const center = getPlayerCenter();
-  let target = enemies[0]; let closestDistance = Infinity;
-  enemies.forEach(enemy => {
-    const dx = (enemy.x + enemy.size / 2) - center.x; const dy = (enemy.y + enemy.size / 2) - center.y;
-    const distance = dx * dx + dy * dy;
-    if (distance < closestDistance) { closestDistance = distance; target = enemy; }
-  });
+  let target = currentBoss ? currentBoss : enemies[0];
+  if (!currentBoss && enemies.length > 0) {
+    let closestDistance = Infinity;
+    enemies.forEach(enemy => {
+      const dx = (enemy.x + enemy.size / 2) - center.x; const dy = (enemy.y + enemy.size / 2) - center.y;
+      const distance = dx * dx + dy * dy;
+      if (distance < closestDistance) { closestDistance = distance; target = enemy; }
+    });
+  }
   if (target) shootAt(target.x + target.size / 2, target.y + target.size / 2);
   else shootAt(center.x, center.y - 100);
 }
@@ -474,7 +516,7 @@ document.querySelectorAll("[data-move]").forEach(button => {
 mobileShootButton.addEventListener("click", (e) => { e.preventDefault(); shootNearestEnemy(); });
 
 function spawnEnemy() {
-  if (!gameStarted || gameOver || gamePaused) return;
+  if (!gameStarted || gameOver || gamePaused || currentBoss) return; // Geen kleine aliens tijdens Boss fight
   const side = Math.floor(Math.random() * 4);
   let x = 0; let y = 0;
   if (side === 0) { x = Math.random() * canvas.width; y = -20; }
@@ -520,6 +562,59 @@ function update() {
   bullets.forEach(b => { b.x += b.dx; b.y += b.dy; });
   bullets = bullets.filter(b => b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height);
 
+  // UPDATE BOSS LOGICA
+  if (currentBoss && !timeFrozen) {
+    // Beweeg rustig naar het boven-midden gedeelte van het scherm
+    if (currentBoss.y < 80) currentBoss.y += 1;
+    
+    // Beweeg zachtjes heen en weer links/rechts
+    currentBoss.x += Math.sin(Date.now() / 600) * currentBoss.speed;
+
+    // Boss schiet gedrag
+    if (Date.now() - currentBoss.lastShot > currentBoss.shootInterval) {
+      currentBoss.lastShot = Date.now();
+      // Schiet 6 kogels in een cirkelpatroon rondom zichzelf
+      for (let angle = 0; angle < Math.PI * 2; angle += (Math.PI / 3)) {
+        enemyBullets.push({
+          x: currentBoss.x + currentBoss.size / 2,
+          y: currentBoss.y + currentBoss.size / 2,
+          dx: Math.cos(angle) * 3,
+          dy: Math.sin(angle) * 3,
+          size: 6
+        });
+      }
+      playTone({ frequency: 300, duration: 0.15, type: "sawtooth", gain: 0.08 });
+    }
+
+    // Check botsing speler met Boss
+    let bdx = player.x - (currentBoss.x + currentBoss.size/2);
+    let bdy = player.y - (currentBoss.y + currentBoss.size/2);
+    let bdist = Math.sqrt(bdx * bdx + bdy * bdy);
+    if (bdist < currentBoss.size / 2 + player.size) {
+      if (!activePowerUp || activePowerUp.type !== "shield") { 
+        lives -= 1; 
+        player.x = canvas.width/2; player.y = canvas.height - 50; // Reset speler positie
+        if (lives <= 0) endGame(); 
+      }
+    }
+  }
+
+  // UPDATE BOSS KOGELS
+  enemyBullets.forEach((eb, ebi) => {
+    if (!timeFrozen) { eb.x += eb.dx; eb.y += eb.dy; }
+    
+    // Check hit met speler
+    let pdx = player.x + player.size/2 - eb.x;
+    let pdy = player.y + player.size/2 - eb.y;
+    let pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+    if (pdist < player.size / 2 + eb.size) {
+      enemyBullets.splice(ebi, 1);
+      if (!activePowerUp || activePowerUp.type !== "shield") { lives -= 1; if (lives <= 0) endGame(); }
+    }
+  });
+  enemyBullets = enemyBullets.filter(eb => eb.x > 0 && eb.x < canvas.width && eb.y > 0 && eb.y < canvas.height);
+
+  // UPDATE KLEINE VIJANDEN
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
@@ -545,8 +640,20 @@ function update() {
 
   if (activePowerUp && Date.now() > activePowerUp.expiresAt) { activePowerUp = null; player.speed = 4; player.invulnerable = false; }
 
+  // KOGEL ENEMY & BOSS HITS
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
+    
+    // Check hit op Boss
+    if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
+      bullets.splice(bi, 1);
+      currentBoss.hp -= 1;
+      playTone({ frequency: 450, duration: 0.05, type: "sine", gain: 0.1 });
+      if (currentBoss.hp <= 0) { destroyBoss(); }
+      continue;
+    }
+
+    // Check hit op kleine aliens
     for (let ei = enemies.length - 1; ei >= 0; ei--) {
       const e = enemies[ei];
       if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
@@ -569,6 +676,7 @@ function draw() {
   const center = getPlayerCenter();
   const lookX = Math.sign(mouse.x - center.x); const lookY = Math.sign(mouse.y - center.y);
 
+  // SPELER
   ctx.fillStyle = "#00e5ff"; ctx.fillRect(player.x, player.y, player.size, player.size);
   ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.size, player.size);
 
@@ -580,6 +688,39 @@ function draw() {
   ctx.beginPath(); ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
+  // BOSS TEKENEN
+  if (currentBoss) {
+    ctx.fillStyle = "#aa00ff"; // Paarse Alien Baas!
+    ctx.fillRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
+    ctx.strokeStyle = "#ff00e5"; ctx.lineWidth = 3; 
+    ctx.strokeRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
+
+    // Boze ogen voor de Boss
+    ctx.fillStyle = "red";
+    ctx.beginPath();
+    ctx.arc(currentBoss.x + 20, currentBoss.y + 25, 8, 0, Math.PI*2);
+    ctx.arc(currentBoss.x + 50, currentBoss.y + 25, 8, 0, Math.PI*2);
+    ctx.fill();
+
+    // BOSS HEALTH BAR
+    const barWidth = 200;
+    const barHeight = 14;
+    const barX = canvas.width / 2 - barWidth / 2;
+    const barY = 50;
+    
+    ctx.fillStyle = "#333"; ctx.fillRect(barX, barY, barWidth, barHeight); // Achterkant
+    const hpPercentage = currentBoss.hp / currentBoss.maxHp;
+    ctx.fillStyle = "#ff304f"; ctx.fillRect(barX, barY, barWidth * hpPercentage, barHeight); // Rode gevulde balk
+    ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barWidth, barHeight);
+
+    ctx.font = "12px Arial"; ctx.fillStyle = "white";
+    ctx.fillText("BOSS ALIEN HP", barX + 55, barY - 5);
+  }
+
+  // BOSS KOGELS TEKENEN
+  enemyBullets.forEach(eb => { ctx.fillStyle = "#ff9100"; ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.size, 0, Math.PI*2); ctx.fill(); });
+
+  // VIJANDEN
   enemies.forEach(e => {
     ctx.fillStyle = "#ff304f"; ctx.beginPath(); ctx.arc(e.x + e.size / 2, e.y + e.size / 2, e.size / 2, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
@@ -606,8 +747,7 @@ function draw() {
   }
 
   if (timeFrozen) {
-    ctx.font = "20px Arial";
-    ctx.fillStyle = "#00e5ff";
+    ctx.font = "20px Arial"; ctx.fillStyle = "#00e5ff";
     ctx.fillText("❄ TIME FROZEN ❄", canvas.width / 2 - 80, 30);
   }
 
