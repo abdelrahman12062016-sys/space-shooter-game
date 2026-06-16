@@ -39,15 +39,31 @@
       <div>High Score: <span id="high-score">0</span></div>
       <div>Power-Up: <span id="power-up-status">None</span></div>
     </div>
+    
     <div class="game-area">
       <canvas id="game"></canvas>
+      
       <button id="pause-button" class="pause-button hidden" aria-label="Pause game">
         <span></span>
         <span></span>
       </button>
       
-      <button id="admin-touch-button" style="display: none; position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #ff304f; border: 2px solid #ffffff; color: white; font-weight: bold; font-family: 'Courier New', Courier, monospace; border-radius: 5px; cursor: pointer; z-index: 99999; font-size: 20px; box-shadow: 0 0 15px rgba(255, 48, 79, 0.8); transition: transform 0.2s;">M</button>
+      <button id="admin-touch-button" style="display: none; position: absolute; top: 15px; right: 15px; width: 45px; height: 45px; background: #ff304f; border: 2px solid #ffffff; color: white; font-weight: bold; font-family: 'Courier New', Courier, monospace; border-radius: 5px; cursor: pointer; z-index: 999999; font-size: 20px; box-shadow: 0 0 15px rgba(255, 48, 79, 0.8);">M</button>
       
+      <div id="hacker-admin-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 290px; background: rgba(10, 10, 15, 0.98); border: 2px solid #ff304f; border-radius: 12px; box-shadow: 0 0 35px rgba(255, 48, 79, 0.8); z-index: 1000000; font-family: 'Courier New', Courier, monospace; color: #ff304f; padding: 20px; box-sizing: border-box; text-align: center;">
+        <div style="border-bottom: 1px dashed #ff304f; padding-bottom: 10px; margin-bottom: 15px;">
+          <h3 style="margin: 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase;">⚠ SYSTEM HACK ⚠</h3>
+          <small style="color: #666;">User: <span id="admin-panel-user" style="color: #fff;">Admin</span></small>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <button onclick="triggerCheat('godmode')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">🛡 ACTIVATE GODMODE</button>
+          <button onclick="triggerCheat('score')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 +5,000 SCORE</button>
+          <button onclick="triggerCheat('nuke')" style="background: rgba(255, 165, 0, 0.2); border: 1px solid #ffa500; color: #ffa500; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">☢ LAUNCH NUKE ATTACK</button>
+          <button onclick="triggerCheat('freeze')" style="background: rgba(0, 229, 255, 0.2); border: 1px solid #00e5ff; color: #00e5ff; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">❄ FREEZE TIME</button>
+        </div>
+        <button onclick="toggleAdminPanel()" style="margin-top: 20px; background: #ff304f; border: none; color: white; width: 100%; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 10px rgba(255, 48, 79, 0.4);">CLOSE INTERFACE</button>
+      </div>
+
       <button id="settings-button" class="settings-button" title="Settings" aria-label="Settings">⚙</button>
       <button id="fullscreen-button" class="fullscreen-button" title="Full Screen" aria-label="Full Screen">⛶</button>
       
@@ -134,18 +150,6 @@
       </div>
 
     </div>
-  </div>
-
-  <div id="hacker-admin-panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; background: rgba(10, 10, 15, 0.95); border: 2px solid #ff304f; border-radius: 12px; box-shadow: 0 0 30px rgba(255, 48, 79, 0.6); z-index: 100000; font-family: 'Courier New', Courier, monospace; color: #ff304f; padding: 20px; box-sizing: border-box; text-align: center;">
-    <div style="border-bottom: 1px dashed #ff304f; padding-bottom: 10px; margin-bottom: 15px;">
-      <h3 style="margin: 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase;">⚠ SYSTEM HACK ⚠</h3>
-      <small style="color: #666;">User: <span id="admin-panel-user" style="color: #fff;">Abdullah</span></small>
-    </div>
-    <div style="display: flex; flex-direction: column; gap: 12px;">
-      <button onclick="triggerCheat('godmode')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">🛡 ACTIVATE GODMODE</button>
-      <button onclick="triggerCheat('score')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">💰 +5,000 SCORE</button>
-    </div>
-    <button onclick="toggleAdminPanel()" style="margin-top: 20px; background: #ff304f; border: none; color: white; width: 100%; padding: 8px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 10px rgba(255, 48, 79, 0.4);">CLOSE INTERFACE</button>
   </div>
 
   <script src="game.js"></script>
