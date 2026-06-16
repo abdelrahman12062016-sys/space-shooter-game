@@ -1,8 +1,9 @@
 // ==========================================
-// GEAVANCEERDE LOG IN & SIGN UP FEATURE
+// GEAVANCEERDE LOG IN, SIGN UP & LEADERBOARD
 // ==========================================
 let isAdmin = false;
 let isLoggedIn = false;
+let currentLoggedInUser = ""; 
 
 // Wisselen tussen schermen
 function showSignUp() {
@@ -17,6 +18,61 @@ function showLogin() {
   document.getElementById("login-error").innerText = "";
 }
 
+// UPDATE EN TOON HET LEADERBOARD
+function renderLeaderboards() {
+  // Haal alle highscores op uit localStorage
+  let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
+  
+  // Zet de data om naar een gesorteerde lijst (van hoog naar laag)
+  let sortableScores = [];
+  for (let player in scoresData) {
+    sortableScores.push({ name: player, score: scoresData[player] });
+  }
+  sortableScores.sort((a, b) => b.score - a.score);
+
+  // Pak de top 5
+  let topFive = sortableScores.slice(0, 5);
+
+  // Vul de lijst op het startscherm
+  const startList = document.getElementById("start-leaderboard");
+  startList.innerHTML = "";
+  if (topFive.length === 0) {
+    startList.innerHTML = "<li>Nog geen scores!</li>";
+  } else {
+    topFive.forEach(item => {
+      startList.innerHTML += `<li><strong>${item.name}</strong>: ${item.score}</li>`;
+    });
+  }
+
+  // Vul de lijst op het game-over scherm
+  const gameOverList = document.getElementById("gameover-leaderboard");
+  gameOverList.innerHTML = "";
+  if (topFive.length === 0) {
+    gameOverList.innerHTML = "<li>Nog geen scores!</li>";
+  } else {
+    topFive.forEach(item => {
+      gameOverList.innerHTML += `<li><strong>${item.name}</strong>: ${item.score}</li>`;
+    });
+  }
+}
+
+// SAVE SCORE NA GAME OVER
+function savePlayerScore(finalScore) {
+  if (!currentLoggedInUser) return;
+
+  let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
+  let currentHighScore = scoresData[currentLoggedInUser] || 0;
+
+  // Alleen opslaan als de nieuwe score hoger is dan het oude record van deze speler
+  if (finalScore > currentHighScore) {
+    scoresData[currentLoggedInUser] = finalScore;
+    localStorage.setItem("spaceGameLeaderboard", JSON.stringify(scoresData));
+  }
+
+  // Ververs de lijstjes direct
+  renderLeaderboards();
+}
+
 // SIGN UP (REGISTREREN) FUNCTION
 function checkSignUp() {
   const newUser = document.getElementById("new-username").value.trim().toLowerCase();
@@ -28,29 +84,24 @@ function checkSignUp() {
     return;
   }
 
-  // Check of de naam al bezet is door de vaste admins
   if (newUser === "darianmeyer" || newUser === "abdelamr" || newUser === "abdullahminihoofd") {
     errorText.innerText = "Deze legendarische admin naam kun je niet stelen!";
     return;
   }
 
-  // Haal database op uit browsergeheugen, of maak een lege lijst als die nog niet bestaat
   let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
 
-  // Check of de naam al bezet is door een andere geregistreerde speler
   if (registeredUsers[newUser]) {
     errorText.innerText = "Deze gebruikersnaam bestaat al!";
     return;
   }
 
-  // Sla het nieuwe account op
   registeredUsers[newUser] = newPass;
   localStorage.setItem("spaceGameUsers", JSON.stringify(registeredUsers));
 
   errorText.style.color = "#00e5ff";
   errorText.innerText = "Account succesvol gemaakt! Log nu in.";
   
-  // Wis de inputvelden en ga terug naar login
   document.getElementById("new-username").value = "";
   document.getElementById("new-password").value = "";
   setTimeout(showLogin, 1500);
@@ -61,42 +112,41 @@ function checkLogin() {
   const user = document.getElementById("username").value.trim().toLowerCase();
   const pass = document.getElementById("password").value.trim();
   const errorText = document.getElementById("login-error");
-  errorText.style.color = "red"; // reset kleur naar rood voor fouten
+  errorText.style.color = "red"; 
+
+  // Functie om succesvolle login af te handelen
+  function loginSuccess(username, adminStatus, welcomeMessage) {
+    isAdmin = adminStatus;
+    isLoggedIn = true;
+    currentLoggedInUser = username;
+    document.getElementById("hud-username").innerText = username;
+    if (welcomeMessage) alert(welcomeMessage);
+    document.getElementById("login-screen").style.display = "none";
+    renderLeaderboards(); // Laad direct de scores in
+  }
 
   // 1. Check de vaste Hoofd-Admins
   if (user === "darianmeyer" && pass === "darianadmin6767") {
-    isAdmin = true;
-    isLoggedIn = true;
-    alert("Welkom Darian! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
-    document.getElementById("login-screen").style.display = "none";
+    loginSuccess("darianmeyer", true, "Welkom Darian! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     return;
   } 
   if (user === "abdelamr" && pass === "abdelamradmin6767") {
-    isAdmin = true;
-    isLoggedIn = true;
-    alert("Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
-    document.getElementById("login-screen").style.display = "none";
+    loginSuccess("abdelamr", true, "Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     return;
   } 
   if (user === "abdullahminihoofd" && pass === "abdull123admin") {
-    isAdmin = true;
-    isLoggedIn = true;
-    alert("Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
-    document.getElementById("login-screen").style.display = "none";
+    loginSuccess("abdullahminihoofd", true, "Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
     return;
   } 
 
-  // 2. Check de geregistreerde normale spelers (uit localStorage)
+  // 2. Check de geregistreerde normale spelers
   let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
   
   if (registeredUsers[user] && registeredUsers[user] === pass) {
-    isAdmin = false; // Normale spelers krijgen geen cheats!
-    isLoggedIn = true;
-    document.getElementById("login-screen").style.display = "none";
+    loginSuccess(user, false, null);
     return;
   }
 
-  // Als niks klopt:
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
@@ -114,7 +164,6 @@ const startScreen = document.getElementById("start-screen");
 const startButton = document.getElementById("start-button");
 const gameOverScreen = document.getElementById("game-over-screen");
 const finalScoreElement = document.getElementById("final-score");
-const finalHighScoreElement = document.getElementById("final-high-score");
 const playAgainButton = document.getElementById("play-again-button");
 const gameOverLeaveButton = document.getElementById("game-over-leave-button");
 const pauseButton = document.getElementById("pause-button");
@@ -283,7 +332,6 @@ function getPlayerCenter() {
 // GAME STATE
 let lives = 3;
 let score = 0;
-let highScore = Number(localStorage.getItem("highScore")) || 0;
 let gameOver = false;
 let gameStarted = false;
 let gamePaused = false;
@@ -296,7 +344,11 @@ let activePowerUp = null;
 function updateHud() {
   scoreElement.textContent = score;
   livesElement.textContent = lives;
-  highScoreElement.textContent = highScore;
+  
+  // High score in HUD toont nu de all-time highscore van deze specifieke ingelogde speler
+  let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
+  let userHighScore = scoresData[currentLoggedInUser] || 0;
+  highScoreElement.textContent = userHighScore;
 
   if (activePowerUp) {
     powerUpStatusElement.textContent = activePowerUp.type === "shield" ? "Shield active" : "Speed active";
@@ -314,12 +366,6 @@ function updateMobileControls() {
 
 function addScore(points) {
   score += points;
-
-  if (score > highScore) {
-    highScore = score;
-    localStorage.setItem("highScore", highScore);
-  }
-
   updateHud();
 }
 
@@ -352,13 +398,8 @@ function startGame() {
   updateHud();
   updateMobileControls();
 
-  if (enemySpawnTimer) {
-    clearInterval(enemySpawnTimer);
-  }
-
-  if (powerUpSpawnTimer) {
-    clearInterval(powerUpSpawnTimer);
-  }
+  if (enemySpawnTimer) clearInterval(enemySpawnTimer);
+  if (powerUpSpawnTimer) clearInterval(powerUpSpawnTimer);
 
   playAudio("start");
   startBackgroundMusic();
@@ -406,18 +447,12 @@ function leaveGame() {
   pauseButton.classList.remove("paused");
   updateHud();
   updateMobileControls();
+  renderLeaderboards(); // Leaderboard verversen bij terugkeer
 
   stopBackgroundMusic();
 
-  if (enemySpawnTimer) {
-    clearInterval(enemySpawnTimer);
-    enemySpawnTimer = null;
-  }
-
-  if (powerUpSpawnTimer) {
-    clearInterval(powerUpSpawnTimer);
-    powerUpSpawnTimer = null;
-  }
+  if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
+  if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
 }
 
 pauseLeaveButton.addEventListener("click", leaveGame);
@@ -485,7 +520,10 @@ function endGame() {
   gameStarted = false;
   gamePaused = false;
   finalScoreElement.textContent = score;
-  finalHighScoreElement.textContent = highScore;
+  
+  // SLA SCORE OP IN LEADERBOARD
+  savePlayerScore(score);
+
   hud.classList.add("hidden");
   gameOverScreen.classList.remove("hidden");
   pauseScreen.classList.add("hidden");
@@ -496,15 +534,8 @@ function endGame() {
 
   stopBackgroundMusic();
 
-  if (enemySpawnTimer) {
-    clearInterval(enemySpawnTimer);
-    enemySpawnTimer = null;
-  }
-
-  if (powerUpSpawnTimer) {
-    clearInterval(powerUpSpawnTimer);
-    powerUpSpawnTimer = null;
-  }
+  if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
+  if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
 
   playAudio("gameover");
 }
@@ -617,25 +648,16 @@ function spawnEnemy() {
   let y = 0;
 
   if (side === 0) {
-    x = Math.random() * canvas.width;
-    y = -20;
+    x = Math.random() * canvas.width; y = -20;
   } else if (side === 1) {
-    x = canvas.width + 20;
-    y = Math.random() * canvas.height;
+    x = canvas.width + 20; y = Math.random() * canvas.height;
   } else if (side === 2) {
-    x = Math.random() * canvas.width;
-    y = canvas.height + 20;
+    x = Math.random() * canvas.width; y = canvas.height + 20;
   } else {
-    x = -20;
-    y = Math.random() * canvas.height;
+    x = -20; y = Math.random() * canvas.height;
   }
 
-  enemies.push({
-    x: x,
-    y: y,
-    size: 20,
-    speed: 1.5
-  });
+  enemies.push({ x: x, y: y, size: 20, speed: 1.5 });
 }
 
 function spawnPowerUp() {
@@ -654,10 +676,7 @@ function spawnPowerUp() {
 }
 
 function applyPowerUp(powerUp) {
-  activePowerUp = {
-    ...powerUp,
-    expiresAt: Date.now() + powerUp.duration
-  };
+  activePowerUp = { ...powerUp, expiresAt: Date.now() + powerUp.duration };
 
   if (powerUp.type === "speed") {
     player.speed = 7;
@@ -668,7 +687,7 @@ function applyPowerUp(powerUp) {
   }
 }
 
-// CLAMP (NO OUT MAP)
+// CLAMP
 function clampPlayer() {
   player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
@@ -680,14 +699,11 @@ function update() {
 
   stars.forEach(star => {
     star.y += star.speed;
-
     if (star.y > canvas.height) {
-      star.y = 0;
-      star.x = Math.random() * canvas.width;
+      star.y = 0; star.x = Math.random() * canvas.width;
     }
   });
 
-  // MOVE
   if (keys["w"]) player.y -= player.speed;
   if (keys["s"]) player.y += player.speed;
   if (keys["a"]) player.x -= player.speed;
@@ -695,18 +711,9 @@ function update() {
 
   clampPlayer();
 
-  // BULLETS
-  bullets.forEach(b => {
-    b.x += b.dx;
-    b.y += b.dy;
-  });
+  bullets.forEach(b => { b.x += b.dx; b.y += b.dy; });
+  bullets = bullets.filter(b => b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height);
 
-  bullets = bullets.filter(b =>
-    b.x > 0 && b.x < canvas.width &&
-    b.y > 0 && b.y < canvas.height
-  );
-
-  // ENEMIES MOVE + HIT PLAYER
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x;
     let dy = player.y - e.y;
@@ -715,16 +722,11 @@ function update() {
     e.x += (dx / dist) * e.speed;
     e.y += (dy / dist) * e.speed;
 
-    // HIT PLAYER
     if (dist < player.size) {
       enemies.splice(ei, 1);
-
       if (!activePowerUp || activePowerUp.type !== "shield") {
         lives -= 1;
-
-        if (lives <= 0) {
-          endGame();
-        }
+        if (lives <= 0) endGame();
       }
     }
   });
@@ -736,36 +738,21 @@ function update() {
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < powerUp.size / 2 + player.size / 2) {
-      applyPowerUp(powerUp);
-      return false;
+      applyPowerUp(powerUp); return false;
     }
-
     return true;
   });
 
   if (activePowerUp && Date.now() > activePowerUp.expiresAt) {
-    activePowerUp = null;
-    player.speed = 4;
-    player.invulnerable = false;
+    activePowerUp = null; player.speed = 4; player.invulnerable = false;
   }
 
-  // BULLET HIT ENEMY
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
-
     for (let ei = enemies.length - 1; ei >= 0; ei--) {
       const e = enemies[ei];
-
-      if (
-        b.x < e.x + e.size &&
-        b.x + b.size > e.x &&
-        b.y < e.y + e.size &&
-        b.y + b.size > e.y
-      ) {
-        enemies.splice(ei, 1);
-        bullets.splice(bi, 1);
-        addScore(1);
-        break;
+      if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
+        enemies.splice(ei, 1); bullets.splice(bi, 1); addScore(1); break;
       }
     }
   }
@@ -781,139 +768,90 @@ function draw() {
 
   stars.forEach(star => {
     ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
-    ctx.beginPath();
-    ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2); ctx.fill();
   });
 
-  // PLAYER
   const center = getPlayerCenter();
   const lookX = Math.sign(mouse.x - center.x);
   const lookY = Math.sign(mouse.y - center.y);
 
   ctx.fillStyle = "#00e5ff";
   ctx.fillRect(player.x, player.y, player.size, player.size);
-  ctx.strokeStyle = "white";
-  ctx.lineWidth = 2;
-  ctx.strokeRect(player.x, player.y, player.size, player.size);
+  ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.size, player.size);
 
   ctx.fillStyle = "white";
   ctx.beginPath();
-  ctx.arc(player.x + 7, player.y + 8, 4, 0, Math.PI * 2);
-  ctx.arc(player.x + 15, player.y + 8, 4, 0, Math.PI * 2);
+  ctx.arc(player.x + 7, player.y + 8, 4, 0, Math.PI * 2); ctx.arc(player.x + 15, player.y + 8, 4, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "black";
   ctx.beginPath();
-  ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
-  ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
+  ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // ENEMIES
   enemies.forEach(e => {
-    ctx.fillStyle = "#ff304f";
-    ctx.beginPath();
-    ctx.arc(e.x + e.size / 2, e.y + e.size / 2, e.size / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#ffb3c1";
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.fillStyle = "#ff304f"; ctx.beginPath(); ctx.arc(e.x + e.size / 2, e.y + e.size / 2, e.size / 2, 0, Math.PI * 2); ctx.fill();
+    ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
   });
 
-  // BULLETS
   bullets.forEach(b => {
-    ctx.fillStyle = "#fff176";
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillStyle = "#fff176"; ctx.beginPath(); ctx.arc(b.x, b.y, b.size, 0, Math.PI * 2); ctx.fill();
   });
 
   powerUps.forEach(powerUp => {
-    ctx.save();
-    ctx.translate(powerUp.x, powerUp.y);
-    ctx.shadowBlur = 18;
-    ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
+    ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18; ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
 
     if (powerUp.type === "speed") {
-      ctx.fillStyle = "#76ff03";
-      ctx.beginPath();
-      ctx.moveTo(0, -powerUp.size / 2);
-      ctx.lineTo(powerUp.size / 2, 0);
-      ctx.lineTo(0, powerUp.size / 2);
-      ctx.lineTo(-powerUp.size / 2, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.stroke();
+      ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
     } else {
-      ctx.fillStyle = "#03a9f4";
-      ctx.beginPath();
-      ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-      ctx.fillStyle = "white";
-      ctx.font = "bold 18px Arial";
-      ctx.fillText("S", -6, 7);
+      ctx.fillStyle = "#03a9f4"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.fillText("S", -6, 7);
     }
-
-    ctx.shadowBlur = 0;
-    ctx.restore();
+    ctx.shadowBlur = 0; ctx.restore();
   });
 
   if (activePowerUp) {
-    ctx.font = "18px Arial";
-    ctx.fillStyle = activePowerUp.type === "shield" ? "#03a9f4" : "#76ff03";
+    ctx.font = "18px Arial"; ctx.fillStyle = activePowerUp.type === "shield" ? "#03a9f4" : "#76ff03";
     ctx.fillText(activePowerUp.type === "shield" ? "Shield Active!" : "Speed Boost!", 10, 60);
   }
 
-  // FONT FIX
-  ctx.font = "16px Arial";
-  ctx.fillStyle = "white";
-
+  ctx.font = "16px Arial"; ctx.fillStyle = "white";
   ctx.fillText("Score: " + score, 10, 20);
-  ctx.fillText("Lives: " + lives, 10, 40);
-  updateHud();
+  
+  let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
+  let userHighScore = scoresData[currentLoggedInUser] || 0;
+  ctx.fillText("High Score: " + userHighScore, 10, 40);
 }
 
 // LOOP
 function loop() {
-  update();
-  draw();
-  requestAnimationFrame(loop);
+  update(); draw(); requestAnimationFrame(loop);
 }
 
 // ADMIN COMMANDO CODE
 function executeAdminCommand() {
   let command = prompt("Voer een admin commando in:\n(Typ: 'godmode' of 'score')");
-
   if (command === null) return;
 
   switch (command.toLowerCase().trim()) {
     case "godmode":
       lives = 9999;
-      activePowerUp = {
-        type: "shield",
-        expiresAt: Date.now() + 99999999
-      };
+      activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
       player.invulnerable = true;
       updateHud();
       alert("Godmode AAN! 9999 levens + oneindig schild geactiveerd.");
       break;
-
     case "score":
       addScore(5000);
       alert("5000 punten erbij geknald!");
       break;
-
     default:
       alert("Onbekend commando. Type 'godmode' of 'score'.");
   }
 }
 
-// START DE GAME LOOPS EN UPDATES
+// START DE GAME LOOPS
 loop();
-updateHud();
 updateControlModeButtons();
