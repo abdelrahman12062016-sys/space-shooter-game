@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -6,8 +7,10 @@
 </head>
 <body>
 
+  <!-- === INTERACTIEF INLOG- & REGISTRATIESCHERM === -->
   <div id="login-screen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
     
+    <!-- Het Inlog Formulier -->
     <div id="login-box" style="display: flex; flex-direction: column; align-items: center;">
       <h2 style="font-family: Arial, sans-serif; margin-bottom: 20px;">Space Shooter Login</h2>
       <input type="text" id="username" placeholder="Gebruikersnaam" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #fff; background: #222; color: white;">
@@ -18,6 +21,7 @@
       </p>
     </div>
 
+    <!-- Het Registratie Formulier -->
     <div id="signup-box" style="display: none; flex-direction: column; align-items: center;">
       <h2 style="font-family: Arial, sans-serif; margin-bottom: 20px; color: #00e5ff;">Maak een Account Aan</h2>
       <input type="text" id="new-username" placeholder="Kies Gebruikersnaam" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #00e5ff; background: #222; color: white;">
@@ -28,6 +32,7 @@
       </p>
     </div>
 
+    <!-- Foutmeldingen -->
     <p id="login-error" style="color: red; margin-top: 15px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; max-width: 300px;"></p>
   </div>
 
@@ -45,8 +50,8 @@
         <span></span>
       </button>
       
-    <!-- GEHEIME ADMIN TOUCH KNOP - NU MET VASTE EN DUIDELIJKE POSITIE -->
-<button id="admin-touch-button" style="display: none; position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #ff304f; border: 2px solid #ffffff; color: white; font-weight: bold; font-family: Arial, sans-serif; border-radius: 8px; cursor: pointer; z-index: 99999; font-size: 18px; box-shadow: 0 0 15px rgba(255, 48, 79, 0.7);">M</button>
+      <!-- GEHEIME ADMIN TOUCH KNOP - FIXED VOOR TABLET/MOBILE USERS -->
+      <button id="admin-touch-button" style="display: none; position: fixed; top: 15px; right: 15px; width: 45px; height: 45px; background: #ff304f; border: 2px solid #ffffff; color: white; font-weight: bold; font-family: 'Courier New', Courier, monospace; border-radius: 5px; cursor: pointer; z-index: 99999; font-size: 20px; box-shadow: 0 0 15px rgba(255, 48, 79, 0.8); transition: transform 0.2s;">M</button>
       
       <button id="settings-button" class="settings-button" title="Settings" aria-label="Settings">⚙</button>
       <button id="fullscreen-button" class="fullscreen-button" title="Full Screen" aria-label="Full Screen">⛶</button>
@@ -93,6 +98,7 @@
         <button id="mobile-shoot-button" class="mobile-shoot-button" title="Shoot" aria-label="Shoot">⦿</button>
       </div>
       
+      <!-- START SCHERM MET LEADERBOARD -->
       <div id="start-screen" class="start-screen">
         <h1 class="game-logo">Shooter Space Game</h1>
         <div class="start-info">
@@ -100,6 +106,7 @@
           <p style="color: #00e5ff; font-weight: bold;">Ingetrapt als: <span id="hud-username">...</span></p>
         </div>
         
+        <!-- LEADERBOARD BOX -->
         <div style="background: rgba(255,255,255,0.1); border: 2px solid #00e5ff; padding: 15px; border-radius: 8px; margin: 15px 0; width: 280px; font-family: Arial, sans-serif;">
           <h3 style="margin-top:0; color: #fff176; text-align:center; letter-spacing: 1px;">🏆 TOP 5 LEADERBOARD</h3>
           <ol id="start-leaderboard" style="margin:0; padding-left: 25px; text-align:left; color: white; line-height: 1.6;"></ol>
@@ -110,6 +117,7 @@
         </button>
       </div>
       
+      <!-- GAME OVER SCHERM MET LEADERBOARD -->
       <div id="game-over-screen" class="game-over-screen hidden">
         <div class="game-over-panel">
           <h1 class="game-logo">Shooter Space Game</h1>
@@ -117,6 +125,7 @@
           <p>Final Score</p>
           <div class="final-score" id="final-score">0</div>
           
+          <!-- LEADERBOARD BOX OP GAME OVER -->
           <div style="background: rgba(0,0,0,0.4); border: 1px solid red; padding: 10px; border-radius: 8px; margin: 10px auto; width: 240px; font-family: Arial, sans-serif; font-size: 14px;">
             <h4 style="margin: 0 0 5px 0; color: #ff304f;">🏆 Actuele Top 5</h4>
             <ol id="gameover-leaderboard" style="margin:0; padding-left: 20px; text-align:left; color: white;"></ol>
@@ -135,6 +144,23 @@
 
     </div>
   </div>
+
+  <!-- SCI-FI HACKER ADMIN PANEEL (Zwevend UI Dashboard) -->
+  <div id="hacker-admin-panel" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 320px; background: rgba(10, 10, 15, 0.95); border: 2px solid #ff304f; border-radius: 12px; box-shadow: 0 0 30px rgba(255, 48, 79, 0.6); z-index: 100000; font-family: 'Courier New', Courier, monospace; color: #ff304f; padding: 20px; box-sizing: border-box; text-align: center;">
+    <div style="border-bottom: 1px dashed #ff304f; padding-bottom: 10px; margin-bottom: 15px;">
+      <h3 style="margin: 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase;">⚠ SYSTEM HACK ⚠</h3>
+      <small style="color: #666;">User: <span id="admin-panel-user" style="color: #fff;">Abdullah</span></small>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 12px;">
+      <button onclick="triggerCheat('godmode')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">🛡 ACTIVATE GODMODE</button>
+      <button onclick="triggerCheat('score')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">💰 +5,000 SCORE</button>
+      <button onclick="triggerCheat('nuke')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">☢ NUKE ALL ENEMIES</button>
+      <button onclick="triggerCheat('slomo')" id="btn-slomo" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">⏳ SLOW-MOTION: OFF</button>
+      <button onclick="triggerCheat('instawin')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: #fff176; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px;">🏆 INSTANT WIN GAME</button>
+    </div>
+    <button onclick="toggleAdminPanel()" style="margin-top: 20px; background: #ff304f; border: none; color: white; width: 100%; padding: 8px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 10px rgba(255, 48, 79, 0.4);">CLOSE INTERFACE</button>
+  </div>
+
   <script src="game.js"></script>
 </body>
 </html>
