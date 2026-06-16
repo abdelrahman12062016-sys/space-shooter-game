@@ -6,12 +6,13 @@ let isLoggedIn = false;
 let currentLoggedInUser = ""; 
 let timeFrozen = false; 
 
-// BOSS FIGHT & VICTORY VARIABELEN
+// BOSS FIGHT, VICTORY, RUIMTESCHIP & DAMAGE VARIABELEN
 let currentBoss = null;
 let nextBossScore = 100; // Eerste baas komt bij 100 punten
 let enemyBullets = [];   // Kogels afgeschoten door de baas
 let victoryAchieved = false; // Zorgt dat het scherm maar één keer popt bij 1000 punten
 let fireworks = [];          // Array voor vuurwerkdeeltjes
+let damageNumbers = [];      // Array voor de rondvliegende schade-cijfers
 
 const victoryScreen = document.getElementById("victory-screen");
 const victoryKeepPlayingButton = document.getElementById("victory-keep-playing-button");
@@ -344,12 +345,11 @@ function updateMobileControls() {
 // OVERWINNINGSSCHERM LOGICA (VICTORY SCREEN)
 function triggerVictory() {
   victoryAchieved = true;
-  gamePaused = true; // Zet het spel op pauze voor de viering
+  gamePaused = true; 
   victoryScreen.classList.remove("hidden");
   document.getElementById("victory-score").textContent = score;
   stopBackgroundMusic();
   
-  // Overwinnings deuntje
   playTone({ frequency: 523.25, duration: 0.15, type: "sine" }); 
   setTimeout(() => playTone({ frequency: 659.25, duration: 0.15, type: "sine" }), 150); 
   setTimeout(() => playTone({ frequency: 783.99, duration: 0.15, type: "sine" }), 300); 
@@ -380,7 +380,7 @@ function createFirework() {
 
 victoryKeepPlayingButton.addEventListener("click", () => {
   victoryScreen.classList.add("hidden");
-  gamePaused = false; // Knallen maar, lekker oneindig doorspelen!
+  gamePaused = false; 
   startBackgroundMusic();
 });
 
@@ -393,7 +393,6 @@ function addScore(points) {
   score += points; 
   updateHud(); 
   
-  // Check voor 1000 punten overwinning
   if (score >= 1000 && !victoryAchieved) {
     triggerVictory();
   }
@@ -432,7 +431,7 @@ function destroyBoss() {
 function startGame() {
   if (!isLoggedIn) { alert("Je moet eerst inloggen bro!"); return; }
   lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false; timeFrozen = false;
-  victoryAchieved = false; fireworks = [];
+  victoryAchieved = false; fireworks = []; damageNumbers = [];
   bullets = []; enemies = []; powerUps = []; activePowerUp = null; enemyBullets = []; currentBoss = null;
   activeWeapon = "normal"; weaponExpiresAt = 0;
   nextBossScore = 100;
@@ -472,7 +471,7 @@ stayButton.addEventListener("click", togglePause);
 function leaveGame() {
   gameStarted = false; gameOver = false; gamePaused = false; timeFrozen = false;
   bullets = []; enemies = []; enemyBullets = []; currentBoss = null; lives = 3; score = 0;
-  activeWeapon = "normal"; weaponExpiresAt = 0; victoryAchieved = false; fireworks = [];
+  activeWeapon = "normal"; weaponExpiresAt = 0; victoryAchieved = false; fireworks = []; damageNumbers = [];
   startScreen.classList.remove("hidden"); hud.classList.add("hidden"); gameOverScreen.classList.add("hidden");
   pauseScreen.classList.add("hidden"); settingsScreen.classList.add("hidden"); pauseButton.classList.add("hidden");
   pauseButton.classList.remove("paused"); victoryScreen.classList.add("hidden");
@@ -645,14 +644,13 @@ function clampPlayer() {
 }
 
 function update() {
-  // Update vuurwerk deeltjes beweegt ALTIJD (ook tijdens overwinningspauze)
+  // Update vuurwerk deeltjes beweegt ALTIJD
   fireworks.forEach((f, index) => {
     f.x += f.dx; f.y += f.dy;
     f.dy += 0.05; f.alpha -= f.decay;
     if (f.alpha <= 0) fireworks.splice(index, 1);
   });
 
-  // Genereer continu nieuw vuurwerk tijdens het overwinningsscherm
   if (victoryAchieved && Math.random() < 0.05) {
     createFirework();
   }
@@ -743,13 +741,24 @@ function update() {
   if (activePowerUp && Date.now() > activePowerUp.expiresAt) { activePowerUp = null; player.speed = 4; player.invulnerable = false; }
   if (activeWeapon !== "normal" && Date.now() > weaponExpiresAt) { activeWeapon = "normal"; }
 
+  // KOGEL BOTSINGEN MET SCHADE-CIJFERS (STAP 4)
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
     let bulletRemoved = false;
     
     if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
-      currentBoss.hp -= b.isBeam ? 3 : 1; 
+      let damageDealt = b.isBeam ? 3 : 1;
+      currentBoss.hp -= damageDealt; 
       playTone({ frequency: 450, duration: 0.05, type: "sine", gain: 0.1 });
+      
+      damageNumbers.push({
+        x: b.x,
+        y: b.y,
+        text: "-" + damageDealt,
+        color: b.isBeam ? "#ff5500" : "#fff176",
+        alpha: 1,
+        life: 30
+      });
       
       if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; } 
       if (currentBoss.hp <= 0) { destroyBoss(); }
@@ -761,6 +770,16 @@ function update() {
       if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
         enemies.splice(ei, 1); 
         addScore(1); 
+        
+        damageNumbers.push({
+          x: e.x + e.size/2,
+          y: e.y,
+          text: "-1",
+          color: activeWeapon === "spread" ? "#ff007f" : "#fff176",
+          alpha: 1,
+          life: 25
+        });
+
         if (!b.isBeam) { 
           bullets.splice(bi, 1); 
           bulletRemoved = true; 
@@ -769,6 +788,14 @@ function update() {
       }
     }
   }
+
+  // Update de animatie van de schade-cijfers
+  damageNumbers.forEach((dn, index) => {
+    dn.y -= 0.8;
+    dn.life--;
+    dn.alpha = dn.life / 30;
+    if (dn.life <= 0) damageNumbers.splice(index, 1);
+  });
 }
 
 function draw() {
@@ -784,22 +811,59 @@ function draw() {
   const center = getPlayerCenter();
   const lookX = Math.sign(mouse.x - center.x); const lookY = Math.sign(mouse.y - center.y);
 
-  if (Date.now() < weaponExpiresAt) {
-    ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#ffaa00"; 
-  } else {
-    ctx.fillStyle = "#00e5ff"; 
+  // === STAP 3: ÉCHT RETRO RUIMTESCHIP TEKENEN ===
+  ctx.save();
+  ctx.translate(player.x + player.size / 2, player.y + player.size / 2);
+
+  if (Math.random() > 0.3) {
+    ctx.fillStyle = Math.random() > 0.5 ? "#ff1a00" : "#ffaa00";
+    ctx.beginPath();
+    ctx.moveTo(-6, player.size / 2);
+    ctx.lineTo(0, player.size / 2 + (Math.random() * 12 + 6)); 
+    ctx.lineTo(6, player.size / 2);
+    ctx.closePath();
+    ctx.fill();
   }
-  
-  ctx.fillRect(player.x, player.y, player.size, player.size);
-  ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.size, player.size);
 
-  ctx.fillStyle = "white";
-  ctx.beginPath(); ctx.arc(player.x + 7, player.y + 8, 4, 0, Math.PI * 2); ctx.arc(player.x + 15, player.y + 8, 4, 0, Math.PI * 2);
+  ctx.fillStyle = Date.now() < weaponExpiresAt ? (activeWeapon === "spread" ? "#ff007f" : "#ffaa00") : "#00e5ff";
+  ctx.beginPath();
+  ctx.moveTo(0, -player.size / 1.2); 
+  ctx.lineTo(player.size / 2, player.size / 2);
+  ctx.lineTo(-player.size / 2, player.size / 2);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = "white";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.moveTo(-player.size / 2, player.size / 4);
+  ctx.lineTo(-player.size * 1.1, player.size / 2);
+  ctx.lineTo(-player.size / 2, player.size / 2);
+  ctx.moveTo(player.size / 2, player.size / 4);
+  ctx.lineTo(player.size * 1.1, player.size / 2);
+  ctx.lineTo(player.size / 2, player.size / 2);
   ctx.fill();
 
-  ctx.fillStyle = "black";
-  ctx.beginPath(); ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.beginPath();
+  ctx.arc(0, -2, 4, 0, Math.PI * 2);
   ctx.fill();
+
+  ctx.restore();
+  // === EINDE RUIMTESCHIP ===
+
+  // === STAP 4: TEKEN SCHADE-CIJFERS ===
+  damageNumbers.forEach(dn => {
+    ctx.save();
+    ctx.globalAlpha = dn.alpha;
+    ctx.fillStyle = dn.color;
+    ctx.font = "bold 14px Arial";
+    ctx.textAlign = "center";
+    ctx.fillText(dn.text, dn.x, dn.y);
+    ctx.restore();
+  });
 
   if (currentBoss) {
     ctx.fillStyle = "#aa00ff"; 
@@ -845,7 +909,6 @@ function draw() {
     ctx.shadowBlur = 0;
   });
 
-  // POWERUPS DESIGN
   powerUps.forEach(powerUp => {
     ctx.save(); 
     ctx.translate(powerUp.x, powerUp.y); 
@@ -880,7 +943,6 @@ function draw() {
     ctx.restore();
   });
 
-  // VUERWERK TEKENEN (WORDT BOVENOP ALLES GETEKEND)
   fireworks.forEach(f => {
     ctx.save();
     ctx.globalAlpha = f.alpha; ctx.fillStyle = f.color;
