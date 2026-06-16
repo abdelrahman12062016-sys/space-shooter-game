@@ -311,7 +311,7 @@ let lives = 3; let score = 0; let gameOver = false; let gameStarted = false; let
 let controlMode = localStorage.getItem("controlMode") || "pc";
 let enemySpawnTimer = null; let powerUpSpawnTimer = null;
 let powerUps = []; let activePowerUp = null;
-let activeWeapon = "normal"; // Kan zijn: "normal", "spread", "beam"
+let activeWeapon = "normal"; // normal, spread, beam
 let weaponExpiresAt = 0;
 
 function updateHud() {
@@ -321,7 +321,6 @@ function updateHud() {
   let userHighScore = scoresData[currentLoggedInUser] || 0;
   highScoreElement.textContent = userHighScore;
 
-  // Update HUD status voor actieve effecten
   if (Date.now() < weaponExpiresAt) {
     powerUpStatusElement.textContent = activeWeapon.toUpperCase() + " SHOT!";
   } else if (activePowerUp) {
@@ -389,7 +388,7 @@ function startGame() {
 
   playAudio("start"); startBackgroundMusic();
   enemySpawnTimer = setInterval(spawnEnemy, 1500);
-  powerUpSpawnTimer = setInterval(spawnPowerUp, 7000); // Iets vaker spawnen voor actie!
+  powerUpSpawnTimer = setInterval(spawnPowerUp, 6000); 
 }
 
 startButton.addEventListener("click", startGame);
@@ -489,23 +488,19 @@ canvas.addEventListener("click", () => {
   shootAt(mouse.x, mouse.y);
 });
 
-// NIEUWE GEAVANCEERDE SCHIET LOGICA (WAPEN TYPES)
 function shootAt(targetX, targetY) {
   const center = getPlayerCenter();
   const baseAngle = Math.atan2(targetY - center.y, targetX - center.x);
   
-  // Controleer of wapen-tijd voorbij is
   if (Date.now() > weaponExpiresAt) {
     activeWeapon = "normal";
   }
 
   if (activeWeapon === "normal") {
-    // Normaal schot: 1 gele kogel
     bullets.push({ x: center.x, y: center.y, dx: Math.cos(baseAngle) * 8, dy: Math.sin(baseAngle) * 8, size: 5, isBeam: false });
     playAudio("shoot");
   } 
   else if (activeWeapon === "spread") {
-    // Spread shot: 3 kogels in een waaier-vorm (-0.2 rad, 0 rad, +0.2 rad)
     const angles = [baseAngle - 0.2, baseAngle, baseAngle + 0.2];
     angles.forEach(angle => {
       bullets.push({ x: center.x, y: center.y, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, size: 6, isBeam: false });
@@ -513,7 +508,6 @@ function shootAt(targetX, targetY) {
     playTone({ frequency: 700, duration: 0.08, type: "square", gain: 0.1 });
   } 
   else if (activeWeapon === "beam") {
-    // Plasma Beam: 1 gigantische, dikke kogel die dwars door vijanden heen vliegt
     bullets.push({ x: center.x, y: center.y, dx: Math.cos(baseAngle) * 11, dy: Math.sin(baseAngle) * 11, size: 24, isBeam: true });
     playTone({ frequency: 400, duration: 0.15, type: "sawtooth", gain: 0.12 });
   }
@@ -555,12 +549,10 @@ function spawnEnemy() {
   enemies.push({ x: x, y: y, size: 20, speed: 1.5 });
 }
 
-// GEAVANCEERDE POWER-UP SPAWNS MET WAPENS
 function spawnPowerUp() {
   if (!gameStarted || gameOver || gamePaused) return;
   if (powerUps.length > 0) return;
   
-  // Kansen verdeeld over 4 verschillende opties!
   const rand = Math.random();
   let type = "speed";
   if (rand < 0.25) type = "speed";
@@ -608,7 +600,6 @@ function update() {
   bullets.forEach(b => { b.x += b.dx; b.y += b.dy; });
   bullets = bullets.filter(b => b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height);
 
-  // UPDATE BOSS LOGICA
   if (currentBoss && !timeFrozen) {
     if (currentBoss.y < 80) currentBoss.y += 1;
     currentBoss.x += Math.sin(Date.now() / 600) * currentBoss.speed;
@@ -639,7 +630,6 @@ function update() {
     }
   }
 
-  // UPDATE BOSS KOGELS
   enemyBullets.forEach((eb, ebi) => {
     if (!timeFrozen) { eb.x += eb.dx; eb.y += eb.dy; }
     
@@ -653,7 +643,6 @@ function update() {
   });
   enemyBullets = enemyBullets.filter(eb => eb.x > 0 && eb.x < canvas.width && eb.y > 0 && eb.y < canvas.height);
 
-  // UPDATE KLEINE VIJANDEN
   enemies.forEach((e, ei) => {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
@@ -677,33 +666,28 @@ function update() {
     return true;
   });
 
-  // Reset powerup verlopen checks
   if (activePowerUp && Date.now() > activePowerUp.expiresAt) { activePowerUp = null; player.speed = 4; player.invulnerable = false; }
   if (activeWeapon !== "normal" && Date.now() > weaponExpiresAt) { activeWeapon = "normal"; }
 
-  // KOGEL HIT LOGICA (AANGEPAST VOOR DE LASER BEAM)
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
     let bulletRemoved = false;
     
-    // Check hit op Boss
     if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
-      currentBoss.hp -= b.isBeam ? 3 : 1; // Laser beam doet 3x zoveel schade aan de baas!
+      currentBoss.hp -= b.isBeam ? 3 : 1; 
       playTone({ frequency: 450, duration: 0.05, type: "sine", gain: 0.1 });
       
-      if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; } // Laser snijdt door de baas heen!
+      if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; } 
       if (currentBoss.hp <= 0) { destroyBoss(); }
       if (bulletRemoved) continue;
     }
 
-    // Check hit op kleine aliens
     for (let ei = enemies.length - 1; ei >= 0; ei--) {
       const e = enemies[ei];
       if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
         enemies.splice(ei, 1); 
         addScore(1); 
-        
-        if (!b.isBeam) { // Alleen normale/spread kogels verdwijnen bij impact, de beam vliegt door!
+        if (!b.isBeam) { 
           bullets.splice(bi, 1); 
           bulletRemoved = true; 
         }
@@ -726,11 +710,10 @@ function draw() {
   const center = getPlayerCenter();
   const lookX = Math.sign(mouse.x - center.x); const lookY = Math.sign(mouse.y - center.y);
 
-  // SPELER KLEUR VERANDERT OP BASIS VAN WAPEN
   if (Date.now() < weaponExpiresAt) {
-    ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#ffaa00"; // Roze voor spread, oranje voor beam
+    ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#ffaa00"; 
   } else {
-    ctx.fillStyle = "#00e5ff"; // Normaal blauw
+    ctx.fillStyle = "#00e5ff"; 
   }
   
   ctx.fillRect(player.x, player.y, player.size, player.size);
@@ -744,7 +727,6 @@ function draw() {
   ctx.beginPath(); ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
-  // BOSS TEKENEN
   if (currentBoss) {
     ctx.fillStyle = "#aa00ff"; 
     ctx.fillRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
@@ -778,10 +760,9 @@ function draw() {
     ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
   });
 
-  // BULLETS TEKENEN MET EFFECTEN
   bullets.forEach(b => { 
     if (b.isBeam) {
-      ctx.fillStyle = "#ff5500"; // Dikke vuorige plasma straal
+      ctx.fillStyle = "#ff5500"; 
       ctx.shadowBlur = 15; ctx.shadowColor = "#ff1a00";
     } else {
       ctx.fillStyle = activeWeapon === "spread" ? "#ff007f" : "#fff176"; 
@@ -790,27 +771,46 @@ function draw() {
     ctx.shadowBlur = 0;
   });
 
-  // POWERUPS DESIGN
+  // POWERUPS DESIGN (VOLLEDIG SCHERP EN MIDDENUITGELIJD)
   powerUps.forEach(powerUp => {
-    ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18;
-    
+    ctx.save(); 
+    ctx.translate(powerUp.x, powerUp.y); 
+    ctx.shadowBlur = 20;
+
+    ctx.beginPath(); 
+    ctx.arc(0, 0, powerUp.size / 1.2, 0, Math.PI * 2);
+
     if (powerUp.type === "speed") {
-      ctx.shadowColor = "#76ff03"; ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-    } else if (powerUp.type === "shield") {
-      ctx.shadowColor = "#03a9f4"; ctx.fillStyle = "#03a9f4"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial"; ctx.fillText("S", -6, 7);
-    } else if (powerUp.type === "spread") {
-      // Waaier symbool (W)
-      ctx.shadowColor = "#ff007f"; ctx.fillStyle = "#ff007f"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText("W", -8, 6);
-    } else if (powerUp.type === "beam") {
-      // Laser symbool (L)
-      ctx.shadowColor = "#ffaa00"; ctx.fillStyle = "#ffaa00"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
-      ctx.fillStyle = "white"; ctx.font = "bold 16px Arial"; ctx.fillText("L", -5, 6);
+      ctx.shadowColor = "#76ff03"; ctx.fillStyle = "#1b5e20"; ctx.fill();
+      ctx.strokeStyle = "#76ff03"; ctx.lineWidth = 3; ctx.stroke();
+      
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("S", 0, 0);
+    } 
+    else if (powerUp.type === "shield") {
+      ctx.shadowColor = "#03a9f4"; ctx.fillStyle = "#0d47a1"; ctx.fill();
+      ctx.strokeStyle = "#03a9f4"; ctx.lineWidth = 3; ctx.stroke();
+      
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("B", 0, 0); // B voor Bescherming/Schild
+    } 
+    else if (powerUp.type === "spread") {
+      ctx.shadowColor = "#ff007f"; ctx.fillStyle = "#880e4f"; ctx.fill();
+      ctx.strokeStyle = "#ff007f"; ctx.lineWidth = 3; ctx.stroke();
+      
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("W", 0, 0);
+    } 
+    else if (powerUp.type === "beam") {
+      ctx.shadowColor = "#ffaa00"; ctx.fillStyle = "#e65100"; ctx.fill();
+      ctx.strokeStyle = "#ffaa00"; ctx.lineWidth = 3; ctx.stroke();
+      
+      ctx.fillStyle = "white"; ctx.font = "bold 18px Arial";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      ctx.fillText("L", 0, 0);
     }
     ctx.restore();
   });
