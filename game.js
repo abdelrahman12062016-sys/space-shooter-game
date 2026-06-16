@@ -150,6 +150,9 @@ document.getElementById("admin-touch-button").addEventListener("click", (e) => {
   toggleAdminPanel();
 });
 
+// ==========================================
+// CRASH-PROOF ADMIN CHEATS INTERFACE
+// ==========================================
 function triggerCheat(cheatName) {
   if (!isAdmin) return;
 
@@ -161,12 +164,15 @@ function triggerCheat(cheatName) {
   } else if (cheatName === "score") {
     addScore(5000);
   } else if (cheatName === "nuke") {
-    addScore(enemies.length * 10); 
-    enemies = [];
+    enemies = []; // Wis alle normale vijanden
+    
+    // Wis de baas instant uit zónder de score-loop te crashen
     if (currentBoss) {
-      currentBoss.hp -= 15; // Nuke doet zware schade aan de boss!
-      if (currentBoss.hp <= 0) destroyBoss();
+      currentBoss = null; 
+      enemyBullets = []; // Haal ook direct zijn kogels weg
+      nextBossScore = (Math.floor(score / 100) + 1) * 100;
     }
+    
     playTone({ frequency: 80, duration: 0.6, type: "sawtooth", gain: 0.3 });
   } else if (cheatName === "freeze") {
     timeFrozen = !timeFrozen;
@@ -333,37 +339,41 @@ function updateMobileControls() {
   mobileControls.classList.toggle("hidden", !showMobileControls);
 }
 
+// SCORE TRIGGER MET EXTREME HACK BEVEILIGING
 function addScore(points) { 
   score += points; 
   updateHud(); 
   
-  // Triggers Boss Fight bij elke 100 punten!
   if (score >= nextBossScore && !currentBoss) {
+    // Zet de volgende baas ALVAST klaar voor de toekomst om oneindige lussen te voorkomen
+    nextBossScore = (Math.floor(score / 100) + 1) * 100;
     spawnBoss();
   }
 }
 
 // BOSS LOGICA FUNCTIES
 function spawnBoss() {
-  enemies = []; // Verwijder direct kleine vijanden
-  const levelMultiplier = Math.floor(nextBossScore / 100);
+  enemies = []; 
+  enemyBullets = [];
+  const levelMultiplier = Math.floor(score / 100) || 1;
   currentBoss = {
     x: canvas.width / 2 - 35,
-    y: -80, // Komt van boven binnengevlogen
+    y: -80, 
     size: 70,
-    hp: 10 + (levelMultiplier * 5), // Wordt elke 100 punten sterker
+    hp: 10 + (levelMultiplier * 5), 
     maxHp: 10 + (levelMultiplier * 5),
     speed: 1.0,
     lastShot: Date.now(),
-    shootInterval: Math.max(800, 2000 - (levelMultiplier * 150)) // Schiet sneller per level
+    shootInterval: Math.max(800, 2000 - (levelMultiplier * 150)) 
   };
   playTone({ frequency: 150, duration: 0.8, type: "sawtooth", gain: 0.25 });
 }
 
 function destroyBoss() {
   currentBoss = null;
-  nextBossScore += 100; // Volgende baas bij +100 score
-  addScore(25); // Dikke bonus voor overwinning
+  enemyBullets = [];
+  score += 25; // Handmatige veilige score verhoging zonder de loop te triggeren
+  updateHud();
   playTone({ frequency: 400, duration: 0.5, type: "triangle", gain: 0.2 });
 }
 
@@ -516,7 +526,7 @@ document.querySelectorAll("[data-move]").forEach(button => {
 mobileShootButton.addEventListener("click", (e) => { e.preventDefault(); shootNearestEnemy(); });
 
 function spawnEnemy() {
-  if (!gameStarted || gameOver || gamePaused || currentBoss) return; // Geen kleine aliens tijdens Boss fight
+  if (!gameStarted || gameOver || gamePaused || currentBoss) return; 
   const side = Math.floor(Math.random() * 4);
   let x = 0; let y = 0;
   if (side === 0) { x = Math.random() * canvas.width; y = -20; }
@@ -564,16 +574,11 @@ function update() {
 
   // UPDATE BOSS LOGICA
   if (currentBoss && !timeFrozen) {
-    // Beweeg rustig naar het boven-midden gedeelte van het scherm
     if (currentBoss.y < 80) currentBoss.y += 1;
-    
-    // Beweeg zachtjes heen en weer links/rechts
     currentBoss.x += Math.sin(Date.now() / 600) * currentBoss.speed;
 
-    // Boss schiet gedrag
     if (Date.now() - currentBoss.lastShot > currentBoss.shootInterval) {
       currentBoss.lastShot = Date.now();
-      // Schiet 6 kogels in een cirkelpatroon rondom zichzelf
       for (let angle = 0; angle < Math.PI * 2; angle += (Math.PI / 3)) {
         enemyBullets.push({
           x: currentBoss.x + currentBoss.size / 2,
@@ -586,14 +591,13 @@ function update() {
       playTone({ frequency: 300, duration: 0.15, type: "sawtooth", gain: 0.08 });
     }
 
-    // Check botsing speler met Boss
     let bdx = player.x - (currentBoss.x + currentBoss.size/2);
     let bdy = player.y - (currentBoss.y + currentBoss.size/2);
     let bdist = Math.sqrt(bdx * bdx + bdy * bdy);
     if (bdist < currentBoss.size / 2 + player.size) {
       if (!activePowerUp || activePowerUp.type !== "shield") { 
         lives -= 1; 
-        player.x = canvas.width/2; player.y = canvas.height - 50; // Reset speler positie
+        player.x = canvas.width/2; player.y = canvas.height - 50; 
         if (lives <= 0) endGame(); 
       }
     }
@@ -603,7 +607,6 @@ function update() {
   enemyBullets.forEach((eb, ebi) => {
     if (!timeFrozen) { eb.x += eb.dx; eb.y += eb.dy; }
     
-    // Check hit met speler
     let pdx = player.x + player.size/2 - eb.x;
     let pdy = player.y + player.size/2 - eb.y;
     let pdist = Math.sqrt(pdx * pdx + pdy * pdy);
@@ -644,7 +647,6 @@ function update() {
   for (let bi = bullets.length - 1; bi >= 0; bi--) {
     const b = bullets[bi];
     
-    // Check hit op Boss
     if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
       bullets.splice(bi, 1);
       currentBoss.hp -= 1;
@@ -653,7 +655,6 @@ function update() {
       continue;
     }
 
-    // Check hit op kleine aliens
     for (let ei = enemies.length - 1; ei >= 0; ei--) {
       const e = enemies[ei];
       if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
@@ -690,37 +691,33 @@ function draw() {
 
   // BOSS TEKENEN
   if (currentBoss) {
-    ctx.fillStyle = "#aa00ff"; // Paarse Alien Baas!
+    ctx.fillStyle = "#aa00ff"; 
     ctx.fillRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
     ctx.strokeStyle = "#ff00e5"; ctx.lineWidth = 3; 
     ctx.strokeRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
 
-    // Boze ogen voor de Boss
     ctx.fillStyle = "red";
     ctx.beginPath();
     ctx.arc(currentBoss.x + 20, currentBoss.y + 25, 8, 0, Math.PI*2);
     ctx.arc(currentBoss.x + 50, currentBoss.y + 25, 8, 0, Math.PI*2);
     ctx.fill();
 
-    // BOSS HEALTH BAR
     const barWidth = 200;
     const barHeight = 14;
     const barX = canvas.width / 2 - barWidth / 2;
     const barY = 50;
     
-    ctx.fillStyle = "#333"; ctx.fillRect(barX, barY, barWidth, barHeight); // Achterkant
-    const hpPercentage = currentBoss.hp / currentBoss.maxHp;
-    ctx.fillStyle = "#ff304f"; ctx.fillRect(barX, barY, barWidth * hpPercentage, barHeight); // Rode gevulde balk
+    ctx.fillStyle = "#333"; ctx.fillRect(barX, barY, barWidth, barHeight); 
+    const hpPercentage = Math.max(0, currentBoss.hp / currentBoss.maxHp);
+    ctx.fillStyle = "#ff304f"; ctx.fillRect(barX, barY, barWidth * hpPercentage, barHeight); 
     ctx.strokeStyle = "white"; ctx.lineWidth = 1; ctx.strokeRect(barX, barY, barWidth, barHeight);
 
     ctx.font = "12px Arial"; ctx.fillStyle = "white";
     ctx.fillText("BOSS ALIEN HP", barX + 55, barY - 5);
   }
 
-  // BOSS KOGELS TEKENEN
   enemyBullets.forEach(eb => { ctx.fillStyle = "#ff9100"; ctx.beginPath(); ctx.arc(eb.x, eb.y, eb.size, 0, Math.PI*2); ctx.fill(); });
 
-  // VIJANDEN
   enemies.forEach(e => {
     ctx.fillStyle = "#ff304f"; ctx.beginPath(); ctx.arc(e.x + e.size / 2, e.y + e.size / 2, e.size / 2, 0, Math.PI * 2); ctx.fill();
     ctx.strokeStyle = "#ffb3c1"; ctx.lineWidth = 2; ctx.stroke();
@@ -732,7 +729,7 @@ function draw() {
     ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18; ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
     if (powerUp.type === "speed") {
       ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.strokeStyle = "white"; ctx.lineWidth = 2; stroke();
     } else {
       ctx.fillStyle = "#03a9f4"; ctx.beginPath(); ctx.arc(0, 0, powerUp.size / 2, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
