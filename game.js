@@ -31,7 +31,7 @@ function checkLogin() {
     document.getElementById("login-screen").style.display = "none";
   } 
   else {
-    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
+    errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord!";
   }
 }
 
