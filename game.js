@@ -4,6 +4,7 @@
 let isAdmin = false;
 let isLoggedIn = false;
 let currentLoggedInUser = ""; 
+let slomoActive = false;
 
 // Wisselen tussen schermen
 function showSignUp() {
@@ -110,7 +111,6 @@ function checkLogin() {
     currentLoggedInUser = username;
     document.getElementById("hud-username").innerText = username;
     
-    // ALS HET EEN ADMIN IS, TOON DE CORRESPONDERENDE TOUCH KNOP VOOR TABLETS
     if (adminStatus) {
       document.getElementById("admin-touch-button").style.display = "block";
     }
@@ -120,21 +120,19 @@ function checkLogin() {
     renderLeaderboards(); 
   }
 
-  // 1. Check de vaste Hoofd-Admins
   if (user === "darianmeyer" && pass === "darianadmin6767") {
-    loginSuccess("darianmeyer", true, "Welkom Darian! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
+    loginSuccess("darianmeyer", true, "Welkom Darian! Admin menu geactiveerd. Klik op de rode M-knop.");
     return;
   } 
   if (user === "abdelamr" && pass === "abdelamradmin6767") {
-    loginSuccess("abdelamr", true, "Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
+    loginSuccess("abdelamr", true, "Welkom Abdelamr! Admin menu geactiveerd. Klik op de rode M-knop.");
     return;
   } 
   if (user === "abdullahminihoofd" && pass === "abdull123admin") {
-    loginSuccess("abdullahminihoofd", true, "Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
+    loginSuccess("abdullahminihoofd", true, "Welkom Abdullah! Admin menu geactiveerd. Klik op de rode M-knop.");
     return;
   } 
 
-  // 2. Check de geregistreerde normale spelers
   let registeredUsers = JSON.parse(localStorage.getItem("spaceGameUsers")) || {};
   
   if (registeredUsers[user] && registeredUsers[user] === pass) {
@@ -145,15 +143,75 @@ function checkLogin() {
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
 
-// KOPPEL DE TOUCH EVENT AAN DE GEHEIME ADMIN KNOP (Voor tablets)
-document.getElementById("admin-touch-button").addEventListener("click", () => {
-  if (isAdmin) {
-    executeAdminCommand();
+// ADMIN INTERFACE INTERACTIE LOGICA
+function toggleAdminPanel() {
+  if (!isAdmin) return;
+  const panel = document.getElementById("hacker-admin-panel");
+  
+  if (panel.style.display === "none" || panel.style.display === "") {
+    panel.style.display = "block";
+    document.getElementById("admin-panel-user").innerText = currentLoggedInUser;
+    if (gameStarted && !gamePaused && !gameOver) {
+      togglePause();
+    }
+  } else {
+    panel.style.display = "none";
+    if (gameStarted && gamePaused && !gameOver) {
+      togglePause();
+    }
   }
+}
+
+document.getElementById("admin-touch-button").addEventListener("click", (e) => {
+  e.preventDefault();
+  toggleAdminPanel();
 });
 
+function triggerCheat(cheatName) {
+  if (!isAdmin) return;
+
+  switch (cheatName) {
+    case "godmode":
+      lives = 9999;
+      activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
+      player.invulnerable = true;
+      updateHud();
+      break;
+    case "score":
+      addScore(5000);
+      break;
+    case "nuke":
+      if (enemies.length === 0) break;
+      addScore(enemies.length);
+      enemies = [];
+      playTone({ frequency: 100, duration: 0.5, type: "sawtooth", gain: 0.3 });
+      break;
+    case "slomo":
+      slomoActive = !slomoActive;
+      const slomoBtn = document.getElementById("btn-slomo");
+      if (slomoActive) {
+        slomoBtn.innerText = "⏳ SLOW-MOTION: ON";
+        slomoBtn.style.background = "rgba(0, 229, 255, 0.2)";
+        slomoBtn.style.borderColor = "#00e5ff";
+        slomoBtn.style.color = "#00e5ff";
+      } else {
+        slomoBtn.innerText = "⏳ SLOW-MOTION: OFF";
+        slomoBtn.style.background = "rgba(255, 48, 79, 0.1)";
+        slomoBtn.style.borderColor = "#ff304f";
+        slomoBtn.style.color = "white";
+      }
+      break;
+    case "instawin":
+      score = 99999;
+      updateHud();
+      toggleAdminPanel();
+      endGame();
+      break;
+  }
+}
+
 // ==========================================
-// JOUW EIGEN SPEL ELEMENTEN & CODE
+// GAME CORE LOGICA & ENGINE
 // ==========================================
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -181,7 +239,6 @@ const mobileModeButton = document.getElementById("mobile-mode-button");
 const mobileControls = document.getElementById("mobile-controls");
 const mobileShootButton = document.getElementById("mobile-shoot-button");
 
-// AUDIO
 const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
 const audioContext = AudioContextConstructor ? new AudioContextConstructor() : null;
 
@@ -194,15 +251,12 @@ function playTone({ frequency = 440, duration = 0.1, type = "sine", gain = 0.2, 
   if (!audioContext) return;
   const oscillator = audioContext.createOscillator();
   const amplifier = audioContext.createGain();
-
   oscillator.type = type;
   oscillator.frequency.value = frequency;
   oscillator.detune.value = detune;
   amplifier.gain.value = gain;
-
   oscillator.connect(amplifier);
   amplifier.connect(audioContext.destination);
-
   const now = audioContext.currentTime;
   oscillator.start(now);
   oscillator.stop(now + duration);
@@ -210,7 +264,6 @@ function playTone({ frequency = 440, duration = 0.1, type = "sine", gain = 0.2, 
 
 function playAudio(name) {
   resumeAudioContext();
-
   if (name === "start") {
     playTone({ frequency: 220, duration: 0.18, type: "triangle", gain: 0.16 });
     setTimeout(() => playTone({ frequency: 330, duration: 0.12, type: "triangle", gain: 0.14 }), 120);
@@ -228,12 +281,10 @@ let musicRootIndex = 0;
 
 function stopBackgroundMusic() {
   if (!audioContext || !backgroundMusicGain) return;
-
   if (backgroundMusicInterval) {
     clearInterval(backgroundMusicInterval);
     backgroundMusicInterval = null;
   }
-
   const now = audioContext.currentTime;
   backgroundMusicGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
   setTimeout(() => {
@@ -246,31 +297,21 @@ function stopBackgroundMusic() {
 
 function playAmbientChord() {
   if (!audioContext || !backgroundMusicGain) return;
-
-  const chords = [
-    [220, 277, 329],
-    [196, 247, 294],
-    [174, 220, 262],
-    [185, 247, 311]
-  ];
+  const chords = [[220, 277, 329], [196, 247, 294], [174, 220, 262], [185, 247, 311]];
   const chord = chords[musicRootIndex % chords.length];
   musicRootIndex += 1;
-
   chord.forEach((frequency, index) => {
     const oscillator = audioContext.createOscillator();
     const gain = audioContext.createGain();
     oscillator.type = index === 0 ? "triangle" : "sine";
     oscillator.frequency.value = frequency;
     gain.gain.value = 0.0;
-
     oscillator.connect(gain);
     gain.connect(backgroundMusicGain);
-
     const now = audioContext.currentTime;
     gain.gain.setValueAtTime(0.0, now);
     gain.gain.linearRampToValueAtTime(0.04 / (index + 1), now + 0.2);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 4.4);
-
     oscillator.start(now);
     oscillator.stop(now + 4.5);
   });
@@ -279,11 +320,9 @@ function playAmbientChord() {
 function startBackgroundMusic() {
   if (!audioContext || backgroundMusicGain) return;
   resumeAudioContext();
-
   backgroundMusicGain = audioContext.createGain();
   backgroundMusicGain.gain.value = 0.08;
   backgroundMusicGain.connect(audioContext.destination);
-
   playAmbientChord();
   backgroundMusicInterval = setInterval(playAmbientChord, 3200);
 }
@@ -293,7 +332,6 @@ function resizeCanvas() {
   const height = Math.max(450, Math.min(700, window.innerHeight - 40));
   canvas.width = width;
   canvas.height = height;
-
   player.x = canvas.width / 2;
   player.y = canvas.height / 2;
 
@@ -316,22 +354,9 @@ function resizeCanvas() {
 
 window.addEventListener("resize", resizeCanvas);
 
-// PLAYER
-const player = {
-  x: 0,
-  y: 0,
-  size: 20,
-  speed: 4
-};
+const player = { x: 0, y: 0, size: 20, speed: 4 };
+function getPlayerCenter() { return { x: player.x + player.size / 2, y: player.y + player.size / 2 }; }
 
-function getPlayerCenter() {
-  return {
-    x: player.x + player.size / 2,
-    y: player.y + player.size / 2
-  };
-}
-
-// GAME STATE
 let lives = 3;
 let score = 0;
 let gameOver = false;
@@ -346,7 +371,6 @@ let activePowerUp = null;
 function updateHud() {
   scoreElement.textContent = score;
   livesElement.textContent = lives;
-  
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
   let userHighScore = scoresData[currentLoggedInUser] || 0;
   highScoreElement.textContent = userHighScore;
@@ -375,20 +399,10 @@ function startGame() {
     alert("Je moet eerst inloggen bro!");
     return;
   }
-
-  lives = 3;
-  score = 0;
-  gameOver = false;
-  gameStarted = true;
-  gamePaused = false;
-  bullets = [];
-  enemies = [];
-  powerUps = [];
-  activePowerUp = null;
-  player.speed = 4;
-  player.invulnerable = false;
-  player.x = canvas.width / 2;
-  player.y = canvas.height / 2;
+  lives = 3; score = 0; gameOver = false; gameStarted = true; gamePaused = false;
+  bullets = []; enemies = []; powerUps = []; activePowerUp = null;
+  player.speed = 4; player.invulnerable = false;
+  player.x = canvas.width / 2; player.y = canvas.height / 2;
   hud.classList.remove("hidden");
   startScreen.classList.add("hidden");
   gameOverScreen.classList.add("hidden");
@@ -415,30 +429,19 @@ gameOverLeaveButton.addEventListener("click", leaveGame);
 
 function togglePause() {
   if (!gameStarted || gameOver) return;
-
   gamePaused = !gamePaused;
   pauseScreen.classList.toggle("hidden", !gamePaused);
   pauseButton.classList.toggle("paused", gamePaused);
   updateMobileControls();
-
-  if (gamePaused) {
-    stopBackgroundMusic();
-  } else {
-    startBackgroundMusic();
-  }
+  if (gamePaused) stopBackgroundMusic(); else startBackgroundMusic();
 }
 
 pauseButton.addEventListener("click", togglePause);
 stayButton.addEventListener("click", togglePause);
 
 function leaveGame() {
-  gameStarted = false;
-  gameOver = false;
-  gamePaused = false;
-  bullets = [];
-  enemies = [];
-  lives = 3;
-  score = 0;
+  gameStarted = false; gameOver = false; gamePaused = false;
+  bullets = []; enemies = []; lives = 3; score = 0;
   startScreen.classList.remove("hidden");
   hud.classList.add("hidden");
   gameOverScreen.classList.add("hidden");
@@ -448,10 +451,8 @@ function leaveGame() {
   pauseButton.classList.remove("paused");
   updateHud();
   updateMobileControls();
-  renderLeaderboards(); 
-
+  renderLeaderboards();
   stopBackgroundMusic();
-
   if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
   if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
 }
@@ -466,19 +467,16 @@ function updateControlModeButtons() {
 
 function openSettings() {
   settingsScreen.classList.remove("hidden");
-
   if (gameStarted && !gameOver) {
     gamePaused = true;
     pauseScreen.classList.add("hidden");
     pauseButton.classList.add("paused");
   }
-
   updateControlModeButtons();
 }
 
 function closeSettings() {
   settingsScreen.classList.add("hidden");
-
   if (gameStarted && gamePaused && !gameOver) {
     pauseScreen.classList.remove("hidden");
   }
@@ -508,22 +506,16 @@ document.addEventListener("fullscreenchange", () => {
 
 function toggleFullscreen() {
   if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch((error) => {
-      console.error("Fullscreen error:", error);
-    });
+    document.documentElement.requestFullscreen().catch((err) => console.error(err));
   } else {
     document.exitFullscreen();
   }
 }
 
 function endGame() {
-  gameOver = true;
-  gameStarted = false;
-  gamePaused = false;
+  gameOver = true; gameStarted = false; gamePaused = false;
   finalScoreElement.textContent = score;
-  
   savePlayerScore(score);
-
   hud.classList.add("hidden");
   gameOverScreen.classList.remove("hidden");
   pauseScreen.classList.add("hidden");
@@ -531,27 +523,21 @@ function endGame() {
   pauseButton.classList.add("hidden");
   pauseButton.classList.remove("paused");
   updateMobileControls();
-
   stopBackgroundMusic();
-
   if (enemySpawnTimer) { clearInterval(enemySpawnTimer); enemySpawnTimer = null; }
   if (powerUpSpawnTimer) { clearInterval(powerUpSpawnTimer); powerUpSpawnTimer = null; }
-
   playAudio("gameover");
 }
 
-// INPUT (Werkt nog steeds op PC!)
 let keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
-  
   if (isAdmin && e.key.toLowerCase() === "m") {
-    executeAdminCommand();
+    toggleAdminPanel();
   }
 });
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-// MOUSE + SHOOT
 let mouse = { x: 0, y: 0 };
 let bullets = [];
 let enemies = [];
@@ -573,106 +559,56 @@ canvas.addEventListener("click", () => {
 function shootAt(targetX, targetY) {
   const center = getPlayerCenter();
   const angle = Math.atan2(targetY - center.y, targetX - center.x);
-
-  bullets.push({
-    x: center.x,
-    y: center.y,
-    dx: Math.cos(angle) * 8,
-    dy: Math.sin(angle) * 8,
-    size: 5
-  });
-
+  bullets.push({ x: center.x, y: center.y, dx: Math.cos(angle) * 8, dy: Math.sin(angle) * 8, size: 5 });
   playAudio("shoot");
 }
 
 function shootNearestEnemy() {
   if (!gameStarted || gameOver || gamePaused) return;
-
   const center = getPlayerCenter();
   let target = enemies[0];
   let closestDistance = Infinity;
-
   enemies.forEach(enemy => {
-    const enemyCenterX = enemy.x + enemy.size / 2;
-    const enemyCenterY = enemy.y + enemy.size / 2;
-    const dx = enemyCenterX - center.x;
-    const dy = enemyCenterY - center.y;
+    const dx = (enemy.x + enemy.size / 2) - center.x;
+    const dy = (enemy.y + enemy.size / 2) - center.y;
     const distance = dx * dx + dy * dy;
-
-    if (distance < closestDistance) {
-      closestDistance = distance;
-      target = enemy;
-    }
+    if (distance < closestDistance) { closestDistance = distance; target = enemy; }
   });
-
-  if (target) {
-    shootAt(target.x + target.size / 2, target.y + target.size / 2);
-  } else {
-    shootAt(center.x, center.y - 100);
-  }
+  if (target) shootAt(target.x + target.size / 2, target.y + target.size / 2);
+  else shootAt(center.x, center.y - 100);
 }
 
 document.querySelectorAll("[data-move]").forEach(button => {
   const key = button.dataset.move;
-
-  button.addEventListener("pointerdown", (event) => {
-    event.preventDefault(); keys[key] = true;
-  });
-  button.addEventListener("pointerup", (event) => {
-    event.preventDefault(); keys[key] = false;
-  });
-  button.addEventListener("pointerleave", (event) => {
-    event.preventDefault(); keys[key] = false;
-  });
+  button.addEventListener("pointerdown", (e) => { e.preventDefault(); keys[key] = true; });
+  button.addEventListener("pointerup", (e) => { e.preventDefault(); keys[key] = false; });
+  button.addEventListener("pointerleave", (e) => { e.preventDefault(); keys[key] = false; });
 });
 
-mobileShootButton.addEventListener("click", (event) => {
-  event.preventDefault(); shootNearestEnemy();
-});
+mobileShootButton.addEventListener("click", (e) => { e.preventDefault(); shootNearestEnemy(); });
 
-// ENEMY SPAWN
 function spawnEnemy() {
   if (!gameStarted || gameOver || gamePaused) return;
-
   const side = Math.floor(Math.random() * 4);
   let x = 0; let y = 0;
-
-  if (side === 0) {
-    x = Math.random() * canvas.width; y = -20;
-  } else if (side === 1) {
-    x = canvas.width + 20; y = Math.random() * canvas.height;
-  } else if (side === 2) {
-    x = Math.random() * canvas.width; y = canvas.height + 20;
-  } else {
-    x = -20; y = Math.random() * canvas.height;
-  }
-
+  if (side === 0) { x = Math.random() * canvas.width; y = -20; }
+  else if (side === 1) { x = canvas.width + 20; y = Math.random() * canvas.height; }
+  else if (side === 2) { x = Math.random() * canvas.width; y = canvas.height + 20; }
+  else { x = -20; y = Math.random() * canvas.height; }
   enemies.push({ x: x, y: y, size: 20, speed: 1.5 });
 }
 
 function spawnPowerUp() {
   if (!gameStarted || gameOver || gamePaused) return;
   if (powerUps.length > 0) return;
-
   const type = Math.random() < 0.5 ? "speed" : "shield";
-
-  powerUps.push({
-    x: Math.random() * (canvas.width - 60) + 30,
-    y: Math.random() * (canvas.height - 60) + 30,
-    size: 28,
-    type,
-    duration: 5000
-  });
+  powerUps.push({ x: Math.random() * (canvas.width - 60) + 30, y: Math.random() * (canvas.height - 60) + 30, size: 28, type, duration: 5000 });
 }
 
 function applyPowerUp(powerUp) {
   activePowerUp = { ...powerUp, expiresAt: Date.now() + powerUp.duration };
-
-  if (powerUp.type === "speed") {
-    player.speed = 7; addScore(2);
-  } else if (powerUp.type === "shield") {
-    player.invulnerable = true; addScore(3);
-  }
+  if (powerUp.type === "speed") { player.speed = 7; addScore(2); }
+  else if (powerUp.type === "shield") { player.invulnerable = true; addScore(3); }
 }
 
 function clampPlayer() {
@@ -680,15 +616,12 @@ function clampPlayer() {
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
 }
 
-// UPDATE
 function update() {
   if (!gameStarted || gameOver || gamePaused) return;
 
   stars.forEach(star => {
     star.y += star.speed;
-    if (star.y > canvas.height) {
-      star.y = 0; star.x = Math.random() * canvas.width;
-    }
+    if (star.y > canvas.height) { star.y = 0; star.x = Math.random() * canvas.width; }
   });
 
   if (keys["w"]) player.y -= player.speed;
@@ -705,7 +638,10 @@ function update() {
     let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
-    e.x += (dx / dist) * e.speed; e.y += (dy / dist) * e.speed;
+    // SLOW-MOTION EFFECT VOOR VIJANDEN
+    let huidigeSnelheid = slomoActive ? (e.speed * 0.25) : e.speed;
+    e.x += (dx / dist) * huidigeSnelheid; 
+    e.y += (dy / dist) * huidigeSnelheid;
 
     if (dist < player.size) {
       enemies.splice(ei, 1);
@@ -719,10 +655,7 @@ function update() {
   powerUps = powerUps.filter((powerUp) => {
     const dx = powerUp.x - playerCenter.x; const dy = powerUp.y - playerCenter.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
-
-    if (distance < powerUp.size / 2 + player.size / 2) {
-      applyPowerUp(powerUp); return false;
-    }
+    if (distance < powerUp.size / 2 + player.size / 2) { applyPowerUp(powerUp); return false; }
     return true;
   });
 
@@ -741,7 +674,6 @@ function update() {
   }
 }
 
-// DRAW
 function draw() {
   const background = ctx.createLinearGradient(0, 0, 0, canvas.height);
   background.addColorStop(0, "#07122e"); background.addColorStop(1, "#050505");
@@ -777,7 +709,6 @@ function draw() {
 
   powerUps.forEach(powerUp => {
     ctx.save(); ctx.translate(powerUp.x, powerUp.y); ctx.shadowBlur = 18; ctx.shadowColor = powerUp.type === "shield" ? "#03a9f4" : "#76ff03";
-
     if (powerUp.type === "speed") {
       ctx.fillStyle = "#76ff03"; ctx.beginPath(); ctx.moveTo(0, -powerUp.size / 2); ctx.lineTo(powerUp.size / 2, 0); ctx.lineTo(0, powerUp.size / 2); ctx.lineTo(-powerUp.size / 2, 0); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.stroke();
@@ -802,31 +733,7 @@ function draw() {
   ctx.fillText("High Score: " + userHighScore, 10, 40);
 }
 
-function loop() {
-  update(); draw(); requestAnimationFrame(loop);
-}
-
-// ADMIN COMMANDO CODE
-function executeAdminCommand() {
-  let command = prompt("Voer een admin commando in:\n(Typ: 'godmode' of 'score')");
-  if (command === null) return;
-
-  switch (command.toLowerCase().trim()) {
-    case "godmode":
-      lives = 9999;
-      activePowerUp = { type: "shield", expiresAt: Date.now() + 999999999 };
-      player.invulnerable = true;
-      updateHud();
-      alert("Godmode AAN! 9999 levens + oneindig schild geactiveerd.");
-      break;
-    case "score":
-      addScore(5000);
-      alert("5000 punten erbij geknald!");
-      break;
-    default:
-      alert("Onbekend commando. Type 'godmode' of 'score'.");
-  }
-}
+function loop() { update(); draw(); requestAnimationFrame(loop); }
 
 loop();
 updateControlModeButtons();
