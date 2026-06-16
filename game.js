@@ -20,20 +20,14 @@ function showLogin() {
 
 // UPDATE EN TOON HET LEADERBOARD
 function renderLeaderboards() {
-  // Haal alle highscores op uit localStorage
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
-  
-  // Zet de data om naar een gesorteerde lijst (van hoog naar laag)
   let sortableScores = [];
   for (let player in scoresData) {
     sortableScores.push({ name: player, score: scoresData[player] });
   }
   sortableScores.sort((a, b) => b.score - a.score);
-
-  // Pak de top 5
   let topFive = sortableScores.slice(0, 5);
 
-  // Vul de lijst op het startscherm
   const startList = document.getElementById("start-leaderboard");
   startList.innerHTML = "";
   if (topFive.length === 0) {
@@ -44,7 +38,6 @@ function renderLeaderboards() {
     });
   }
 
-  // Vul de lijst op het game-over scherm
   const gameOverList = document.getElementById("gameover-leaderboard");
   gameOverList.innerHTML = "";
   if (topFive.length === 0) {
@@ -63,13 +56,10 @@ function savePlayerScore(finalScore) {
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
   let currentHighScore = scoresData[currentLoggedInUser] || 0;
 
-  // Alleen opslaan als de nieuwe score hoger is dan het oude record van deze speler
   if (finalScore > currentHighScore) {
     scoresData[currentLoggedInUser] = finalScore;
     localStorage.setItem("spaceGameLeaderboard", JSON.stringify(scoresData));
   }
-
-  // Ververs de lijstjes direct
   renderLeaderboards();
 }
 
@@ -114,28 +104,33 @@ function checkLogin() {
   const errorText = document.getElementById("login-error");
   errorText.style.color = "red"; 
 
-  // Functie om succesvolle login af te handelen
   function loginSuccess(username, adminStatus, welcomeMessage) {
     isAdmin = adminStatus;
     isLoggedIn = true;
     currentLoggedInUser = username;
     document.getElementById("hud-username").innerText = username;
+    
+    // ALS HET EEN ADMIN IS, TOON DE CORRESPONDERENDE TOUCH KNOP VOOR TABLETS
+    if (adminStatus) {
+      document.getElementById("admin-touch-button").style.display = "block";
+    }
+
     if (welcomeMessage) alert(welcomeMessage);
     document.getElementById("login-screen").style.display = "none";
-    renderLeaderboards(); // Laad direct de scores in
+    renderLeaderboards(); 
   }
 
   // 1. Check de vaste Hoofd-Admins
   if (user === "darianmeyer" && pass === "darianadmin6767") {
-    loginSuccess("darianmeyer", true, "Welkom Darian! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
+    loginSuccess("darianmeyer", true, "Welkom Darian! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
     return;
   } 
   if (user === "abdelamr" && pass === "abdelamradmin6767") {
-    loginSuccess("abdelamr", true, "Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
+    loginSuccess("abdelamr", true, "Welkom Abdelamr! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
     return;
   } 
   if (user === "abdullahminihoofd" && pass === "abdull123admin") {
-    loginSuccess("abdullahminihoofd", true, "Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' tijdens het vliegen.");
+    loginSuccess("abdullahminihoofd", true, "Welkom Abdullah! Admin menu geactiveerd. Druk op 'M' of tik op de rode M-knop rechtsboven.");
     return;
   } 
 
@@ -149,6 +144,13 @@ function checkLogin() {
 
   errorText.innerText = "Onjuiste gebruikersnaam of wachtwoord, domy!";
 }
+
+// KOPPEL DE TOUCH EVENT AAN DE GEHEIME ADMIN KNOP (Voor tablets)
+document.getElementById("admin-touch-button").addEventListener("click", () => {
+  if (isAdmin) {
+    executeAdminCommand();
+  }
+});
 
 // ==========================================
 // JOUW EIGEN SPEL ELEMENTEN & CODE
@@ -345,7 +347,6 @@ function updateHud() {
   scoreElement.textContent = score;
   livesElement.textContent = lives;
   
-  // High score in HUD toont nu de all-time highscore van deze specifieke ingelogde speler
   let scoresData = JSON.parse(localStorage.getItem("spaceGameLeaderboard")) || {};
   let userHighScore = scoresData[currentLoggedInUser] || 0;
   highScoreElement.textContent = userHighScore;
@@ -447,7 +448,7 @@ function leaveGame() {
   pauseButton.classList.remove("paused");
   updateHud();
   updateMobileControls();
-  renderLeaderboards(); // Leaderboard verversen bij terugkeer
+  renderLeaderboards(); 
 
   stopBackgroundMusic();
 
@@ -521,7 +522,6 @@ function endGame() {
   gamePaused = false;
   finalScoreElement.textContent = score;
   
-  // SLA SCORE OP IN LEADERBOARD
   savePlayerScore(score);
 
   hud.classList.add("hidden");
@@ -540,7 +540,7 @@ function endGame() {
   playAudio("gameover");
 }
 
-// INPUT
+// INPUT (Werkt nog steeds op PC!)
 let keys = {};
 document.addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
@@ -559,17 +559,14 @@ const stars = [];
 
 resizeCanvas();
 
-// MOUSE POSITION
 canvas.addEventListener("mousemove", (e) => {
   const rect = canvas.getBoundingClientRect();
   mouse.x = e.clientX - rect.left;
   mouse.y = e.clientY - rect.top;
 });
 
-// SHOOT
 canvas.addEventListener("click", () => {
   if (!gameStarted || gameOver || gamePaused) return;
-
   shootAt(mouse.x, mouse.y);
 });
 
@@ -619,24 +616,18 @@ document.querySelectorAll("[data-move]").forEach(button => {
   const key = button.dataset.move;
 
   button.addEventListener("pointerdown", (event) => {
-    event.preventDefault();
-    keys[key] = true;
+    event.preventDefault(); keys[key] = true;
   });
-
   button.addEventListener("pointerup", (event) => {
-    event.preventDefault();
-    keys[key] = false;
+    event.preventDefault(); keys[key] = false;
   });
-
   button.addEventListener("pointerleave", (event) => {
-    event.preventDefault();
-    keys[key] = false;
+    event.preventDefault(); keys[key] = false;
   });
 });
 
 mobileShootButton.addEventListener("click", (event) => {
-  event.preventDefault();
-  shootNearestEnemy();
+  event.preventDefault(); shootNearestEnemy();
 });
 
 // ENEMY SPAWN
@@ -644,8 +635,7 @@ function spawnEnemy() {
   if (!gameStarted || gameOver || gamePaused) return;
 
   const side = Math.floor(Math.random() * 4);
-  let x = 0;
-  let y = 0;
+  let x = 0; let y = 0;
 
   if (side === 0) {
     x = Math.random() * canvas.width; y = -20;
@@ -679,15 +669,12 @@ function applyPowerUp(powerUp) {
   activePowerUp = { ...powerUp, expiresAt: Date.now() + powerUp.duration };
 
   if (powerUp.type === "speed") {
-    player.speed = 7;
-    addScore(2);
+    player.speed = 7; addScore(2);
   } else if (powerUp.type === "shield") {
-    player.invulnerable = true;
-    addScore(3);
+    player.invulnerable = true; addScore(3);
   }
 }
 
-// CLAMP
 function clampPlayer() {
   player.x = Math.max(0, Math.min(canvas.width - player.size, player.x));
   player.y = Math.max(0, Math.min(canvas.height - player.size, player.y));
@@ -715,26 +702,22 @@ function update() {
   bullets = bullets.filter(b => b.x > 0 && b.x < canvas.width && b.y > 0 && b.y < canvas.height);
 
   enemies.forEach((e, ei) => {
-    let dx = player.x - e.x;
-    let dy = player.y - e.y;
+    let dx = player.x - e.x; let dy = player.y - e.y;
     let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
 
-    e.x += (dx / dist) * e.speed;
-    e.y += (dy / dist) * e.speed;
+    e.x += (dx / dist) * e.speed; e.y += (dy / dist) * e.speed;
 
     if (dist < player.size) {
       enemies.splice(ei, 1);
       if (!activePowerUp || activePowerUp.type !== "shield") {
-        lives -= 1;
-        if (lives <= 0) endGame();
+        lives -= 1; if (lives <= 0) endGame();
       }
     }
   });
 
   const playerCenter = getPlayerCenter();
   powerUps = powerUps.filter((powerUp) => {
-    const dx = powerUp.x - playerCenter.x;
-    const dy = powerUp.y - playerCenter.y;
+    const dx = powerUp.x - playerCenter.x; const dy = powerUp.y - playerCenter.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance < powerUp.size / 2 + player.size / 2) {
@@ -761,10 +744,8 @@ function update() {
 // DRAW
 function draw() {
   const background = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  background.addColorStop(0, "#07122e");
-  background.addColorStop(1, "#050505");
-  ctx.fillStyle = background;
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  background.addColorStop(0, "#07122e"); background.addColorStop(1, "#050505");
+  ctx.fillStyle = background; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   stars.forEach(star => {
     ctx.fillStyle = "rgba(255, 255, 255, 0.8)";
@@ -772,21 +753,17 @@ function draw() {
   });
 
   const center = getPlayerCenter();
-  const lookX = Math.sign(mouse.x - center.x);
-  const lookY = Math.sign(mouse.y - center.y);
+  const lookX = Math.sign(mouse.x - center.x); const lookY = Math.sign(mouse.y - center.y);
 
-  ctx.fillStyle = "#00e5ff";
-  ctx.fillRect(player.x, player.y, player.size, player.size);
+  ctx.fillStyle = "#00e5ff"; ctx.fillRect(player.x, player.y, player.size, player.size);
   ctx.strokeStyle = "white"; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.size, player.size);
 
   ctx.fillStyle = "white";
-  ctx.beginPath();
-  ctx.arc(player.x + 7, player.y + 8, 4, 0, Math.PI * 2); ctx.arc(player.x + 15, player.y + 8, 4, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(player.x + 7, player.y + 8, 4, 0, Math.PI * 2); ctx.arc(player.x + 15, player.y + 8, 4, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.fillStyle = "black";
-  ctx.beginPath();
-  ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
+  ctx.beginPath(); ctx.arc(player.x + 7 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2); ctx.arc(player.x + 15 + lookX, player.y + 8 + lookY, 1.5, 0, Math.PI * 2);
   ctx.fill();
 
   enemies.forEach(e => {
@@ -825,7 +802,6 @@ function draw() {
   ctx.fillText("High Score: " + userHighScore, 10, 40);
 }
 
-// LOOP
 function loop() {
   update(); draw(); requestAnimationFrame(loop);
 }
@@ -852,6 +828,5 @@ function executeAdminCommand() {
   }
 }
 
-// START DE GAME LOOPS
 loop();
 updateControlModeButtons();
