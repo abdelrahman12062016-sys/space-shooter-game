@@ -1,167 +1,233 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="nl">
 <head>
-  <meta charset="UTF-8">
-  <title>Shooter space Game</title>
-  <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Shooter - Ultimate Alles-Modus</title>
+    <style>
+        body {
+            margin: 0;
+            background-color: #020617;
+            color: #fff;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+        }
+        canvas {
+            border: 2px solid #334155;
+            background-color: #020617;
+            display: block;
+        }
+        .screen {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(2, 6, 23, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+        .hidden { display: none !important; }
+        button {
+            background-color: #00e5ff;
+            color: #020617;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 4px;
+            margin-top: 15px;
+        }
+        button:hover { background-color: #fff; }
+        #hud {
+            position: absolute;
+            top: 10px; left: 10px; right: 10px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 5;
+        }
+        #admin-panel {
+            position: absolute;
+            bottom: 10px; left: 10px;
+            background: rgba(15, 23, 42, 0.9);
+            border: 1px solid #a855f7;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 20;
+        }
+        .cheat-btn {
+            background-color: #a855f7;
+            color: white;
+            font-size: 12px;
+            padding: 6px 10px;
+            margin: 2px;
+        }
+    </style>
 </head>
 <body>
 
-  <!-- GEHEIME ADMIN TOUCH KNOP: HELEMAAL IN DE HOEK VAN HET SCHERM -->
-  <button id="admin-touch-button" style="display: none; position: fixed; top: 10px; right: 10px; width: 50px; height: 50px; background: #ff304f; border: 2px solid #ffffff; color: white; font-weight: bold; font-family: 'Courier New', Courier, monospace; border-radius: 8px; cursor: pointer; z-index: 9999999; font-size: 22px; box-shadow: 0 0 15px rgba(255, 48, 79, 0.8);">M</button>
+<div id="game-container">
+    <div id="hud" class="hidden">
+        <div>SCORE: <span id="score-val">0</span></div>
+        <div>USER: <span id="user-val">abdullahminihoofd (ROOT)</span></div>
+        <div>LIVES: <span id="lives-val">3</span></div>
+    </div>
 
-  <!-- === INTERACTIEF INLOG- & REGISTRATIESCHERM === -->
-  <div id="login-screen" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999;">
+    <div id="start-screen" class="screen">
+        <h1>SPACE SHOOTER: ALLES-MODUS</h1>
+        <p>Ingetrapt als Admin: <strong>abdullahminihoofd</strong></p>
+        <button onclick="startGame()">START GAME</button>
+    </div>
+
+    <div id="game-over-screen" class="screen hidden">
+        <h1 style="color: #ff304f;">GAME OVER</h1>
+        <p>Eindscore: <span id="final-score">0</span></p>
+        <button onclick="startGame()">OPNIEUW PROBEREN</button>
+    </div>
+
+    <div id="admin-panel">
+        <div style="color: #a855f7; font-weight: bold; font-size: 12px; margin-bottom: 5px;">🔧 ADMIN PANEL (M)</div>
+        <button class="cheat-btn" onclick="triggerCheat('godmode')">Godmode</button>
+        <button class="cheat-btn" onclick="triggerCheat('nuke')">Nuke</button>
+        <button class="cheat-btn" onclick="triggerCheat('score')">+1000 Score</button>
+    </div>
+
+    <canvas id="game" width="800" height="600"></canvas>
+</div>
+
+<script>
+// --- GAME ENGINE ---
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+let gameStarted = false, gameOver = false, score = 0, lives = 3, godmode = false;
+let player = { x: 385, y: 500, size: 32, speed: 6 };
+let bullets = [], enemies = [], stars = [], particles = [], keys = {};
+
+// Sterren vullen
+for (let i = 0; i < 50; i++) stars.push({ x: Math.random() * 800, y: Math.random() * 600, speed: 1 + Math.random() * 2 });
+
+function startGame() {
+    gameStarted = true; gameOver = false; score = 0; lives = 3; enemies = []; bullets = [];
+    player.x = 385; player.y = 500;
+    document.getElementById("start-screen").classList.add("hidden");
+    document.getElementById("game-over-screen").classList.add("hidden");
+    document.getElementById("hud").classList.remove("hidden");
+    document.getElementById("score-val").innerText = score;
+    document.getElementById("lives-val").innerText = lives;
+}
+
+function triggerCheat(type) {
+    if (type === 'godmode') { godmode = !godmode; alert("Godmode: " + (godmode ? "AAN" : "UIT")); }
+    if (type === 'score') { score += 1000; document.getElementById("score-val").innerText = score; }
+    if (type === 'nuke') { enemies = []; for(let i=0; i<30; i++) particles.push({x: Math.random()*800, y: Math.random()*600, dx: Math.random()*4-2, dy: Math.random()*4-2, size: 4, color: "#ff304f", alpha: 1}); }
+}
+
+window.addEventListener("keydown", e => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key === " ") { // Sprenkel lasers
+        bullets.push({ x: player.x + 14, y: player.y, size: 4, speed: -10 });
+    }
+    if (e.key.toLowerCase() === "m") { // Schakel admin paneel visueel
+        const p = document.getElementById("admin-panel");
+        p.classList.toggle("hidden");
+    }
+});
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+function update() {
+    if (!gameStarted || gameOver) return;
+
+    // Sterren scrollen
+    stars.forEach(s => { s.y += s.speed; if (s.y > 600) s.y = 0; });
+
+    // Besturing speler
+    if ((keys["w"] || keys["arrowup"]) && player.y > 0) player.y -= player.speed;
+    if ((keys["s"] || keys["arrowdown"]) && player.y < 600 - player.size) player.y += player.speed;
+    if ((keys["a"] || keys["arrowleft"]) && player.x > 0) player.x -= player.speed;
+    if ((keys["d"] || keys["arrowright"]) && player.x < 800 - player.size) player.x += player.speed;
+
+    // Kogels bewegen
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        bullets[i].y += bullets[i].speed;
+        if (bullets[i].y < 0) bullets.splice(i, 1);
+    }
+
+    // Vijanden bewegen & aanvaringen
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        enemies[i].y += enemies[i].speed;
+        if (enemies[i].y > 600) { enemies.splice(i, 1); continue; }
+
+        // Kogel raakt vijand
+        for (let j = bullets.length - 1; j >= 0; j--) {
+            if (bullets[j].x > enemies[i].x && bullets[j].x < enemies[i].x + enemies[i].size && bullets[j].y > enemies[i].y && bullets[j].y < enemies[i].y + enemies[i].size) {
+                // Explosie deeltjes
+                for(let p=0; p<8; p++) particles.push({x: enemies[i].x+12, y: enemies[i].y+12, dx: Math.random()*4-2, dy: Math.random()*4-2, size: 3, color: "#fff176", alpha: 1});
+                enemies.splice(i, 1);
+                bullets.splice(j, 1);
+                score += 10;
+                document.getElementById("score-val").innerText = score;
+                break;
+            }
+        }
+
+        // Vijand raakt speler
+        if (enemies[i] && enemies[i].x < player.x + player.size && enemies[i].x + enemies[i].size > player.x && enemies[i].y < player.y + player.size && enemies[i].y + enemies[i].size > player.y) {
+            enemies.splice(i, 1);
+            if (!godmode) {
+                lives--;
+                document.getElementById("lives-val").innerText = lives;
+                if (lives <= 0) {
+                    gameOver = true;
+                    document.getElementById("game-over-screen").classList.remove("hidden");
+                    document.getElementById("final-score").innerText = score;
+                }
+            }
+        }
+    }
+
+    // Deeltjes updaten
+    for(let i = particles.length - 1; i >= 0; i--) {
+        particles[i].x += particles[i].dx; particles[i].y += particles[i].dy; particles[i].alpha -= 0.02;
+        if(particles[i].alpha <= 0) particles.splice(i, 1);
+    }
+}
+
+function draw() {
+    ctx.fillStyle = "#020617"; ctx.fillRect(0, 0, 800, 600);
+    ctx.fillStyle = "#ffffff"; stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
     
-    <!-- Het Inlog Formulier -->
-    <div id="login-box" style="display: flex; flex-direction: column; align-items: center;">
-      <h2 style="font-family: Arial, sans-serif; margin-bottom: 20px;">Space Shooter Login</h2>
-      <input type="text" id="username" placeholder="Gebruikersnaam" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #fff; background: #222; color: white;">
-      <input type="password" id="password" placeholder="Wachtwoord" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #fff; background: #222; color: white;">
-      <button onclick="checkLogin()" style="margin-top: 15px; padding: 10px 20px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 220px;">Inloggen</button>
-      <p style="margin-top: 20px; font-family: Arial, sans-serif; font-size: 14px;">
-        Nog geen account? <a href="#" onclick="showSignUp()" style="color: #00e5ff; text-decoration: none; font-weight: bold;">Registreer hier</a>
-      </p>
-    </div>
+    particles.forEach(p => { ctx.save(); ctx.globalAlpha = p.alpha; ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, p.size, p.size); ctx.restore(); });
 
-    <!-- Het Registratie Formulier -->
-    <div id="signup-box" style="display: none; flex-direction: column; align-items: center;">
-      <h2 style="font-family: Arial, sans-serif; margin-bottom: 20px; color: #00e5ff;">Maak een Account Aan</h2>
-      <input type="text" id="new-username" placeholder="Kies Gebruikersnaam" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #00e5ff; background: #222; color: white;">
-      <input type="password" id="new-password" placeholder="Kies Wachtwoord" style="margin: 10px; padding: 10px; width: 200px; border-radius: 5px; border: 1px solid #00e5ff; background: #222; color: white;">
-      <button onclick="checkSignUp()" style="margin-top: 15px; padding: 10px 20px; background: #00e5ff; color: black; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 220px;">Registreren</button>
-      <p style="margin-top: 20px; font-family: Arial, sans-serif; font-size: 14px;">
-        Al een account? <a href="#" onclick="showLogin()" style="color: #28a745; text-decoration: none; font-weight: bold;">Log hier in</a>
-      </p>
-    </div>
+    if (!gameStarted || gameOver) return;
 
-    <!-- Foutmeldingen -->
-    <p id="login-error" style="color: red; margin-top: 15px; font-family: Arial, sans-serif; font-weight: bold; text-align: center; max-width: 300px;"></p>
-  </div>
+    // Speler (Neon blauw)
+    ctx.fillStyle = "#00e5ff"; ctx.fillRect(player.x, player.y, player.size, player.size);
+    // Vijanden (Rood)
+    ctx.fillStyle = "#ff304f"; enemies.forEach(e => ctx.fillRect(e.x, e.y, e.size, e.size));
+    // Kogels (Geel)
+    ctx.fillStyle = "#fff176"; bullets.forEach(b => ctx.fillRect(b.x, b.y, b.size, b.size));
+}
 
-  <div class="game-wrapper">
-    <div id="hud" class="hud hidden">
-      <div>Lives: <span id="lives">3</span></div>
-      <div>Score: <span id="score">0</span></div>
-      <div>High Score: <span id="high-score">0</span></div>
-      <div>Power-Up: <span id="power-up-status">None</span></div>
-    </div>
-    
-    <div class="game-area">
-      <canvas id="game"></canvas>
-      
-      <button id="pause-button" class="pause-button hidden" aria-label="Pause game">
-        <span></span>
-        <span></span>
-      </button>
-      
-      <!-- SCI-FI HACKER ADMIN PANEEL -->
-      <div id="hacker-admin-panel" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 290px; background: rgba(10, 10, 15, 0.98); border: 2px solid #ff304f; border-radius: 12px; box-shadow: 0 0 35px rgba(255, 48, 79, 0.8); z-index: 1000000; font-family: 'Courier New', Courier, monospace; color: #ff304f; padding: 20px; box-sizing: border-box; text-align: center;">
-        <div style="border-bottom: 1px dashed #ff304f; padding-bottom: 10px; margin-bottom: 15px;">
-          <h3 style="margin: 0; font-size: 18px; letter-spacing: 2px; text-transform: uppercase;">⚠ SYSTEM HACK ⚠</h3>
-          <small style="color: #666;">User: <span id="admin-panel-user" style="color: #fff;">Admin</span></small>
-        </div>
-        <div style="display: flex; flex-direction: column; gap: 12px;">
-          <button onclick="triggerCheat('godmode')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">🛡 ACTIVATE GODMODE</button>
-          <button onclick="triggerCheat('score')" style="background: rgba(255, 48, 79, 0.1); border: 1px solid #ff304f; color: white; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">💰 +5,000 SCORE</button>
-          <button onclick="triggerCheat('nuke')" style="background: rgba(255, 165, 0, 0.2); border: 1px solid #ffa500; color: #ffa500; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">☢ LAUNCH NUKE ATTACK</button>
-          <button onclick="triggerCheat('freeze')" style="background: rgba(0, 229, 255, 0.2); border: 1px solid #00e5ff; color: #00e5ff; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 13px;">❄ FREEZE TIME</button>
-        </div>
-        <button onclick="toggleAdminPanel()" style="margin-top: 20px; background: #ff304f; border: none; color: white; width: 100%; padding: 10px; font-family: inherit; font-weight: bold; border-radius: 6px; cursor: pointer; font-size: 14px; box-shadow: 0 4px 10px rgba(255, 48, 79, 0.4);">CLOSE INTERFACE</button>
-      </div>
+// Enemy spawner klok
+setInterval(() => { if (gameStarted && !gameOver) enemies.push({ x: Math.random() * 776, y: -24, size: 24, speed: 2 + Math.random()*2 }); }, 1000);
 
-      <button id="settings-button" class="settings-button" title="Settings" aria-label="Settings">⚙</button>
-      <button id="fullscreen-button" class="fullscreen-button" title="Full Screen" aria-label="Full Screen">⛶</button>
-      
-      <div id="pause-screen" class="pause-screen hidden">
-        <div class="pause-panel">
-          <h1>Paused</h1>
-          <div class="pause-actions">
-            <button id="stay-button" class="icon-button" title="Resume" aria-label="Resume">
-              <span class="icon">▶</span>
-            </button>
-            <button id="pause-leave-button" class="icon-button leave" title="Leave" aria-label="Leave">
-              <span class="icon">⏏</span>
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      <div id="settings-screen" class="settings-screen hidden">
-        <div class="settings-panel">
-          <h1>Settings</h1>
-          <p>Choose controls</p>
-          <div class="settings-options">
-            <button id="pc-mode-button" class="icon-button" title="PC Controls" aria-label="PC Controls">
-              <span class="icon">⌨</span>
-            </button>
-            <button id="mobile-mode-button" class="icon-button" title="Mobile Controls" aria-label="Mobile Controls">
-              <span class="icon">📱</span>
-            </button>
-          </div>
-          <button id="close-settings-button" class="icon-button" title="Close Settings" aria-label="Close Settings">
-            <span class="icon">✕</span>
-          </button>
-        </div>
-      </div>
-      
-      <div id="mobile-controls" class="mobile-controls hidden">
-        <div class="mobile-dpad">
-          <button data-move="w" title="Up" aria-label="Up">▲</button>
-          <button data-move="a" title="Left" aria-label="Left">◀</button>
-          <button data-move="s" title="Down" aria-label="Down">▼</button>
-          <button data-move="d" title="Right" aria-label="Right">▶</button>
-        </div>
-        <button id="mobile-shoot-button" class="mobile-shoot-button" title="Shoot" aria-label="Shoot">⦿</button>
-      </div>
-      
-      <!-- START SCHERM MET LEADERBOARD -->
-      <div id="start-screen" class="start-screen">
-        <h1 class="game-logo">Shooter Space Game</h1>
-        <div class="start-info">
-          <p>WASD to move | Click to shoot</p>
-          <p style="color: #00e5ff; font-weight: bold;">Ingetrapt als: <span id="hud-username">...</span></p>
-        </div>
-        
-        <!-- LEADERBOARD BOX -->
-        <div style="background: rgba(255,255,255,0.1); border: 2px solid #00e5ff; padding: 15px; border-radius: 8px; margin: 15px 0; width: 280px; font-family: Arial, sans-serif;">
-          <h3 style="margin-top:0; color: #fff176; text-align:center; letter-spacing: 1px;">🏆 TOP 5 LEADERBOARD</h3>
-          <ol id="start-leaderboard" style="margin:0; padding-left: 25px; text-align:left; color: white; line-height: 1.6;"></ol>
-        </div>
+function loop() { update(); draw(); requestAnimationFrame(loop); }
+loop();
+</script>
 
-        <button id="start-button" class="icon-button" title="Start Game" aria-label="Start Game">
-          <span class="icon">▶</span>
-        </button>
-      </div>
-      
-      <!-- GAME OVER SCHERM MET LEADERBOARD -->
-      <div id="game-over-screen" class="game-over-screen hidden">
-        <div class="game-over-panel">
-          <h1 class="game-logo">Shooter Space Game</h1>
-          <h2>Game Over</h2>
-          <p>Final Score</p>
-          <div class="final-score" id="final-score">0</div>
-          
-          <!-- LEADERBOARD BOX OP GAME OVER -->
-          <div style="background: rgba(0,0,0,0.4); border: 1px solid red; padding: 10px; border-radius: 8px; margin: 10px auto; width: 240px; font-family: Arial, sans-serif; font-size: 14px;">
-            <h4 style="margin: 0 0 5px 0; color: #ff304f;">🏆 Actuele Top 5</h4>
-            <ol id="gameover-leaderboard" style="margin:0; padding-left: 20px; text-align:left; color: white;"></ol>
-          </div>
-
-          <div class="game-over-actions">
-            <button id="play-again-button" class="icon-button restart" title="Play Again" aria-label="Play Again">
-              <span class="icon">▶</span>
-            </button>
-            <button id="game-over-leave-button" class="icon-button leave" title="Leave" aria-label="Leave">
-              <span class="icon">⏏</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
-
-  <script src="game.js"></script>
 </body>
 </html>
