@@ -247,3 +247,240 @@ function logInUser(username, adminStatus) {
   updateLeaderboardsUI();
   playSound("powerup");
 }
+// ==========================================================================
+// SPACE SHOOTER: ENGINE LOGICA & BOTSINGEN (DEEL 2)
+// ==========================================================================
+
+// --- 6. PARTICLES & EFFECTEN GENERATORS ---
+function createExplosion(x, y, color, count = 12) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 1 + Math.random() * 4;
+    particles.push({
+      x: x,
+      y: y,
+      dx: Math.cos(angle) * speed,
+      dy: Math.sin(angle) * speed,
+      size: 2 + Math.random() * 3,
+      color: color,
+      alpha: 1,
+      decay: CONFIG.PARTICLE_DECAY_MIN + Math.random() * (CONFIG.PARTICLE_DECAY_MAX - CONFIG.PARTICLE_DECAY_MIN)
+    });
+  }
+}
+
+function createFirework() {
+  const x = Math.random() * canvas.width;
+  const y = Math.random() * (canvas.height / 2);
+  const colors = ["#ff304f", "#00e5ff", "#fff176", "#a855f7", "#28a745"];
+  const color = colors[Math.floor(Math.random() * colors.length)];
+  
+  for (let i = 0; i < 25; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 2 + Math.random() * 5;
+    fireworks.push({
+      x: x, y: y,
+      dx: Math.cos(angle) * speed,
+      dy: Math.sin(angle) * speed,
+      decay: 0.015 + Math.random() * 0.02,
+      alpha: 1,
+      color: color
+    });
+  }
+  playSound("spread");
+}
+
+// --- 7. WEAPON TRIGGERS (VUURKRACHT) ---
+function fireWeapon() {
+  if (!gameStarted || gamePaused || gameOver) return;
+
+  // Check of wapen-timer is verlopen
+  if (activeWeapon !== "normal" && Date.now() > weaponExpiresAt) {
+    activeWeapon = "normal";
+    document.getElementById("power-up-status").innerText = "None";
+  }
+
+  const pX = player.x + player.size / 2;
+  const pY = player.y;
+
+  switch (activeWeapon) {
+    case "normal":
+      bullets.push({ x: pX - 2, y: pY, dx: 0, dy: CONFIG.BULLET_NORMAL_SPEED, size: 4, isBeam: false });
+      playSound("shoot");
+      break;
+    case "spread":
+      bullets.push({ x: pX - 2, y: pY, dx: 0, dy: CONFIG.BULLET_SPREAD_SPEED, size: 4, isBeam: false });
+      bullets.push({ x: pX - 6, y: pY, dx: -2, dy: CONFIG.BULLET_SPREAD_SPEED, size: 4, isBeam: false });
+      bullets.push({ x: pX + 2, y: pY, dx: 2, dy: CONFIG.BULLET_SPREAD_SPEED, size: 4, isBeam: false });
+      playSound("spread");
+      break;
+    case "beam":
+      // Een dikke laserstraal die doorloopt
+      bullets.push({ x: pX - 6, y: pY, dx: 0, dy: CONFIG.BULLET_BEAM_SPEED, size: 12, isBeam: true });
+      playSound("beam");
+      break;
+  }
+}
+
+// --- 8. GAME UPDATE ENGINE (CRASH-FREE RED ZONE) ---
+function update() {
+  // Update vuurwerk (draait ook op het overwinningsscherm)
+  for (let i = fireworks.length - 1; i >= 0; i--) {
+    let f = fireworks[i];
+    f.x += f.dx; f.y += f.dy;
+    f.dy += 0.04; // Zwaartekracht effect
+    f.alpha -= f.decay;
+    if (f.alpha <= 0) fireworks.splice(i, 1);
+  }
+
+  if (victoryAchieved && Math.random() < 0.04) createFirework();
+  if (!gameStarted || gameOver || gamePaused) return;
+
+  // 1. Onkwetsbaarheid timer verwerken
+  if (player.invulnerable && Date.now() > player.invulnTimer) {
+    player.invulnerable = false;
+  }
+
+  // 2. Parallax Sterren bewegen
+  stars.forEach(star => {
+    star.y += star.speed;
+    if (star.y > canvas.height) {
+      star.y = 0;
+      star.x = Math.random() * canvas.width;
+    }
+  });
+
+  // 3. Speler beweging + grenzen bewaken (Clamping)
+  if (keys["w"] || keys["arrowup"]) player.y -= player.speed;
+  if (keys["s"] || keys["arrowdown"]) player.y += player.speed;
+  if (keys["a"] || keys["arrowleft"]) player.x -= player.speed;
+  if (keys["d"] || keys["arrowright"]) player.x += player.speed;
+
+  if (player.x < 0) player.x = 0;
+  if (player.x > canvas.width - player.size) player.x = canvas.width - player.size;
+  if (player.y < 0) player.y = 0;
+  if (player.y > canvas.height - player.size) player.y = canvas.height - player.size;
+
+  // 4. Deeltjes/Explosies update
+  for (let i = particles.length - 1; i >= 0; i--) {
+    let p = particles[i];
+    p.x += p.dx; p.y += p.dy; p.alpha -= p.decay;
+    if (p.alpha <= 0) particles.splice(i, 1);
+  }
+
+  // 5. Boss AI & Aanvalspatronen
+  if (currentBoss && !timeFrozen) {
+    if (currentBoss.y < 75) currentBoss.y += 1.5; // Komt rustig naar binnen gevlogen
+    currentBoss.x += Math.sin(Date.now() / 600) * currentBoss.speed;
+
+    // Boss schiet interval check
+    if (Date.now() - timers.lastBossShot > currentBoss.shootInterval) {
+      timers.lastBossShot = Date.now();
+      // Genereer 360-graden cirkel van kogels
+      for (let angle = 0; angle < Math.PI * 2; angle += (Math.PI / 4)) {
+        enemyBullets.push({
+          x: currentBoss.x + currentBoss.size / 2,
+          y: currentBoss.y + currentBoss.size / 2,
+          dx: Math.cos(angle) * 3,
+          dy: Math.sin(angle) * 3,
+          size: 7
+        });
+      }
+      playSound("hit");
+    }
+  }
+
+  // 6. Kogels verplaatsen & filteren binnen het scherm
+  for (let i = bullets.length - 1; i >= 0; i--) {
+    let b = bullets[i];
+    b.x += b.dx; b.y += b.dy;
+    if (b.x < 0 || b.x > canvas.width || b.y < 0 || b.y > canvas.height) {
+      bullets.splice(i, 1);
+    }
+  }
+
+  // Enemy bullets verplaatsen
+  for (let i = enemyBullets.length - 1; i >= 0; i--) {
+    let eb = enemyBullets[i];
+    eb.x += eb.dx; eb.y += eb.dy;
+    if (eb.x < 0 || eb.x > canvas.width || eb.y < 0 || eb.y > canvas.height) {
+      enemyBullets.splice(i, 1);
+    }
+  }
+
+  // 7. GIGANTISCHE CRASH-FREE BOTSINGENCHECK (Achterwaartse lussen)
+  for (let bi = bullets.length - 1; bi >= 0; bi--) {
+    const b = bullets[bi];
+    let bulletRemoved = false;
+
+    // Check: Raakt kogel de Boss?
+    if (currentBoss && b.x > currentBoss.x && b.x < currentBoss.x + currentBoss.size && b.y > currentBoss.y && b.y < currentBoss.y + currentBoss.size) {
+      let damage = b.isBeam ? 3 : 1;
+      currentBoss.hp -= damage;
+      damageNumbers.push({ x: b.x, y: b.y, text: "-" + damage, color: "#ff5500", alpha: 1, life: 25 });
+      
+      createExplosion(b.x, b.y, "#ffaa00", 4);
+      if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; }
+
+      if (currentBoss.hp <= 0) {
+        destroyBoss();
+      }
+      if (bulletRemoved) continue;
+    }
+
+    // Check: Raakt kogel gewone vijand?
+    for (let ei = enemies.length - 1; ei >= 0; ei--) {
+      const e = enemies[ei];
+      if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
+        createExplosion(e.x + e.size/2, e.y + e.size/2, "#fff176", 8);
+        enemies.splice(ei, 1);
+        
+        let points = (activePowerUp === "multiplier") ? 2 : 1;
+        addScore(points);
+
+        damageNumbers.push({ x: e.x, y: e.y, text: "+" + points, color: "#fff176", alpha: 1, life: 25 });
+        playSound("hit");
+
+        if (!b.isBeam) { bullets.splice(bi, 1); bulletRemoved = true; }
+        break;
+      }
+    }
+  }
+
+  // 8. Vijanden bewegen + Botsing met speler-ruimteschip
+  for (let ei = enemies.length - 1; ei >= 0; ei--) {
+    const e = enemies[ei];
+    if (!timeFrozen) {
+      // AI: Vijand achtervolgt de x-as en y-as van de speler heel langzaam
+      let dx = player.x - e.x;
+      let dy = player.y - e.y;
+      let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+      e.x += (dx / dist) * e.speed;
+      e.y += (dy / dist) * e.speed;
+    }
+
+    // Botsing vijand -> speler
+    if (e.x < player.x + player.size && e.x + e.size > player.x && e.y < player.y + player.size && e.y + e.size > player.y) {
+      enemies.splice(ei, 1);
+      playerHit();
+    }
+  }
+
+  // 9. Enemy bullets botsing met speler-ruimteschip
+  for (let ebi = enemyBullets.length - 1; ebi >= 0; ebi--) {
+    const eb = enemyBullets[ebi];
+    if (eb.x > player.x && eb.x < player.x + player.size && eb.y > player.y && eb.y < player.y + player.size) {
+      enemyBullets.splice(ebi, 1);
+      playerHit();
+    }
+  }
+
+  // 10. Schade-cijfers updaten en laten vervagen
+  for (let i = damageNumbers.length - 1; i >= 0; i--) {
+    let dn = damageNumbers[i];
+    dn.y -= 0.8;
+    dn.life--;
+    dn.alpha = dn.life / 25;
+    if (dn.life <= 0) damageNumbers.splice(i, 1);
+  }
+}
