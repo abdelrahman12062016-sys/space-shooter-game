@@ -484,3 +484,336 @@ function update() {
     if (dn.life <= 0) damageNumbers.splice(i, 1);
   }
 }
+// ==========================================================================
+// SPACE SHOOTER: RENDERING, ADMIN CHEATS & LOOP CONTROLS (DEEL 3)
+// ==========================================================================
+
+// --- 9. GAME OVER & WIN TRIGGER LOGICA ---
+function playerHit() {
+  if (player.invulnerable || activePowerUp === "shield") {
+    // Shield vangt de klap op
+    if (activePowerUp === "shield") {
+      activePowerUp = null;
+      document.getElementById("power-up-status").innerText = "None";
+      player.invulnerable = true;
+      player.invulnTimer = Date.now() + 1000;
+      playSound("hit");
+    }
+    return;
+  }
+
+  lives--;
+  document.getElementById("lives").innerText = lives;
+  createExplosion(player.x + player.size/2, player.y + player.size/2, "#ff304f", 20);
+  playSound("explosion");
+
+  if (lives <= 0) {
+    endGame();
+  } else {
+    // Geef speler tijdelijke onkwetsbaarheid na crash
+    player.invulnerable = true;
+    player.invulnTimer = Date.now() + CONFIG.PLAYER_INVULN_DURATION;
+    player.x = canvas.width / 2 - player.size / 2;
+    player.y = canvas.height - 100;
+  }
+}
+
+function destroyBoss() {
+  createExplosion(currentBoss.x + currentBoss.size/2, currentBoss.y + currentBoss.size/2, "#a855f7", 40);
+  playSound("explosion");
+  score += 500;
+  addScore(0); // Update HUD
+  currentBoss = null;
+  nextBossScore += 300; // Volgende boss vereist hogere score
+  currentLevel++;
+  
+  // Start vuurwerk show bij level up / boss defeat!
+  victoryAchieved = true;
+  setTimeout(() => { victoryAchieved = false; }, 4000);
+}
+
+function addScore(points) {
+  score += points;
+  document.getElementById("score").innerText = score;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("space_shooter_master_hs", highScore);
+  }
+  
+  // Check of er een Boss moet spawnen
+  if (score >= nextBossScore && !currentBoss) {
+    currentBoss = {
+      x: canvas.width / 2 - 40,
+      y: -100,
+      size: 80,
+      hp: CONFIG.BOSS_HP_PER_LEVEL * currentLevel,
+      maxHp: CONFIG.BOSS_HP_PER_LEVEL * currentLevel,
+      speed: 2 + (currentLevel * 0.5),
+      shootInterval: Math.max(500, 1500 - (currentLevel * 100))
+    };
+    playSound("boss_spawn");
+  }
+}
+
+function endGame() {
+  gameOver = true;
+  document.getElementById("game-over-screen").classList.remove("hidden");
+  document.getElementById("final-score").innerText = score;
+  document.getElementById("high-score").innerText = highScore;
+
+  // Sla score op in het leaderboard object
+  leaderboard.push({
+    username: currentLoggedInUser || "Guest",
+    score: score,
+    date: new Date().toISOString().split('T')[0]
+  });
+  leaderboard.sort((a, b) => b.score - a.score);
+  localStorage.setItem("space_leaderboard_db", JSON.stringify(leaderboard));
+  updateLeaderboardsUI();
+}
+
+// --- 10. LEADERBOARD RENDERING ENGINE ---
+function updateLeaderboardsUI() {
+  const html = leaderboard.slice(0, 5).map((entry, index) => {
+    return `<li><span class="rank">#${index+1}</span> ${entry.username} - <strong>${entry.score}</strong></li>`;
+  }).join("");
+  
+  const l1 = document.getElementById("start-leaderboard");
+  const l2 = document.getElementById("gameover-leaderboard");
+  if (l1) l1.innerHTML = html;
+  if (l2) l2.innerHTML = html;
+}
+
+// --- 11. HACKER/ADMIN DASHBOARD TRIGGER CODES ---
+function toggleAdminPanel() {
+  if (!isAdmin) return;
+  const panel = document.getElementById("hacker-admin-panel");
+  panel.style.display = (panel.style.display === "block") ? "none" : "block";
+}
+window.toggleAdminPanel = toggleAdminPanel;
+
+function triggerCheat(type) {
+  if (!isAdmin) return;
+  
+  switch (type) {
+    case 'godmode':
+      player.invulnerable = !player.invulnerable;
+      if(player.invulnerable) player.invulnTimer = Date.now() + 999999999;
+      else player.invulnTimer = Date.now();
+      alert("HACK: Godmode ingesteld op " + player.invulnerable);
+      break;
+    case 'score':
+      addScore(1000);
+      break;
+    case 'freeze':
+      timeFrozen = !timeFrozen;
+      alert("HACK: Vijandentijd bevroren = " + timeFrozen);
+      break;
+    case 'nuke':
+      createExplosion(canvas.width/2, canvas.height/2, "#ff304f", 50);
+      enemies = [];
+      enemyBullets = [];
+      if(currentBoss) currentBoss.hp -= 25;
+      playSound("explosion");
+      break;
+  }
+}
+window.triggerCheat = triggerCheat;
+
+// --- 12. MENU & BESTURING INTERFACES ---
+function startGame() {
+  gameStarted = true; gameOver = false; gamePaused = false; victoryAchieved = false;
+  score = 0; lives = 3; currentLevel = 1; nextBossScore = 100;
+  enemies = []; bullets = []; enemyBullets = []; particles = []; currentBoss = null;
+  player.x = canvas.width / 2 - player.size / 2;
+  player.y = canvas.height - 100;
+  player.invulnerable = false;
+
+  document.getElementById("start-screen").classList.add("hidden");
+  document.getElementById("game-over-screen").classList.add("hidden");
+  document.getElementById("pause-screen").classList.add("hidden");
+  document.getElementById("hud").classList.remove("hidden");
+  
+  document.getElementById("lives").innerText = lives;
+  document.getElementById("score").innerText = score;
+  playSound("powerup");
+}
+window.startGame = startGame;
+
+function togglePause() {
+  if (!gameStarted || gameOver) return;
+  gamePaused = !gamePaused;
+  document.getElementById("pause-screen").classList.toggle("hidden", !gamePaused);
+}
+window.togglePause = togglePause;
+
+function leaveGame() { location.reload(); }
+window.leaveGame = leaveGame;
+
+function openSettings() { document.getElementById("settings-screen").classList.remove("hidden"); }
+window.openSettings = openSettings;
+
+function closeSettings() { document.getElementById("settings-screen").classList.add("hidden"); }
+window.closeSettings = closeSettings;
+
+function toggleFullscreen() {
+  if (!document.fullscreenElement) {
+    canvas.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen();
+  }
+}
+window.toggleFullscreen = toggleFullscreen;
+
+// --- 13. HTML DOM EVENT LISTENERS (DE BUTTONS CONNECTIE) ---
+window.addEventListener("keydown", e => { keys[e.key.toLowerCase()] = true; if(e.key === " ") fireWeapon(); });
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+function initControls() {
+  document.getElementById("start-button").addEventListener("click", startGame);
+  document.getElementById("play-again-button").addEventListener("click", startGame);
+  document.getElementById("pause-button").addEventListener("click", togglePause);
+  document.getElementById("stay-button").addEventListener("click", togglePause);
+  document.getElementById("pause-leave-button").addEventListener("click", leaveGame);
+  document.getElementById("game-over-leave-button").addEventListener("click", leaveGame);
+  document.getElementById("settings-button").addEventListener("click", openSettings);
+  document.getElementById("close-settings-button").addEventListener("click", closeSettings);
+  document.getElementById("fullscreen-button").addEventListener("click", toggleFullscreen);
+  document.getElementById("admin-touch-button").addEventListener("click", toggleAdminPanel);
+  
+  // D-Pad mobiel
+  document.querySelectorAll("[data-move]").forEach(button => {
+    const moveKey = button.dataset.move;
+    button.addEventListener("pointerdown", e => { e.preventDefault(); keys[moveKey] = true; });
+    button.addEventListener("pointerup", e => { e.preventDefault(); keys[moveKey] = false; });
+    button.addEventListener("pointerleave", e => { e.preventDefault(); keys[moveKey] = false; });
+  });
+  document.getElementById("mobile-shoot-button").addEventListener("click", fireWeapon);
+}
+
+// --- 14. VISUELE RENDER ENGINE (DRAW MODULE) ---
+function draw() {
+  // Clear canvas met deep-space kleur
+  ctx.fillStyle = "#020617";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Teken sterren
+  ctx.fillStyle = "#ffffff";
+  stars.forEach(s => ctx.fillRect(s.x, s.y, 2, 2));
+
+  // Teken deeltjes/explosies
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.fillRect(p.x, p.y, p.size, p.size);
+    ctx.restore();
+  });
+
+  // Teken vuurwerk (Victory)
+  fireworks.forEach(f => {
+    ctx.save();
+    ctx.globalAlpha = f.alpha;
+    ctx.fillStyle = f.color;
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+
+  if (!gameStarted || gameOver) return;
+
+  // Teken speler (Kippert als hij onkwetsbaar is)
+  if (!(player.invulnerable && Math.floor(Date.now() / 100) % 2 === 0)) {
+    ctx.fillStyle = "#00e5ff";
+    ctx.fillRect(player.x, player.y, player.size, player.size);
+    
+    // Shield Aura indicator
+    if (activePowerUp === "shield") {
+      ctx.strokeStyle = "#fff176";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(player.x + player.size/2, player.y + player.size/2, player.size, 0, Math.PI*2);
+      ctx.stroke();
+    }
+  }
+
+  // Teken gewone vijanden
+  ctx.fillStyle = "#ff304f";
+  enemies.forEach(e => ctx.fillRect(e.x, e.y, e.size, e.size));
+
+  // Teken de grote Boss
+  if (currentBoss) {
+    ctx.fillStyle = "#a855f7";
+    ctx.fillRect(currentBoss.x, currentBoss.y, currentBoss.size, currentBoss.size);
+    
+    // Boss Health Bar
+    const barWidth = currentBoss.size;
+    const hpRatio = currentBoss.hp / currentBoss.maxHp;
+    ctx.fillStyle = "#1e293b";
+    ctx.fillRect(currentBoss.x, currentBoss.y - 15, barWidth, 6);
+    ctx.fillStyle = "#28a745";
+    ctx.fillRect(currentBoss.x, currentBoss.y - 15, barWidth * hpRatio, 6);
+  }
+
+  // Teken speler-kogels
+  bullets.forEach(b => {
+    ctx.fillStyle = b.isBeam ? "#00e5ff" : "#fff176";
+    ctx.fillRect(b.x, b.y, b.size, b.isBeam ? 25 : b.size);
+  });
+
+  // Teken vijand-kogels
+  ctx.fillStyle = "#f43f5e";
+  enemyBullets.forEach(eb => {
+    ctx.beginPath();
+    ctx.arc(eb.x, eb.y, eb.size / 2, 0, Math.PI * 2);
+    ctx.fill();
+  });
+
+  // Teken zwevende combat text / damage numbers
+  ctx.font = "bold 15px sans-serif";
+  ctx.textAlign = "center";
+  damageNumbers.forEach(dn => {
+    ctx.save();
+    ctx.globalAlpha = dn.alpha;
+    ctx.fillStyle = dn.color;
+    ctx.fillText(dn.text, dn.x, dn.y);
+    ctx.restore();
+  });
+  ctx.textAlign = "left"; // Reset alignment
+}
+
+// --- 15. CORE RUNTIME ENGINE LOOP ---
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+// --- 16. GENERATIE VAN STATISCHE ASSETS BIJ OPSTART ---
+for (let i = 0; i < 75; i++) {
+  stars.push({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    speed: 0.4 + Math.random() * 1.8
+  });
+}
+
+// Automatische spawn generator loop (elke seconde check)
+setInterval(() => {
+  if (!gameStarted || gamePaused || gameOver || timeFrozen || currentBoss) return;
+  // Kans op spawnen stijgt naarmate je level omhoog gaat
+  if (Math.random() < 0.6 + (currentLevel * 0.05)) {
+    enemies.push({
+      x: Math.random() * (canvas.width - 24),
+      y: -30,
+      size: 24,
+      speed: CONFIG.ENEMY_MIN_SPEED + Math.random() * (CONFIG.ENEMY_MAX_SPEED - CONFIG.ENEMY_MIN_SPEED)
+    });
+  }
+}, 1000);
+
+// Run!
+initControls();
+updateLeaderboardsUI();
+loop();
