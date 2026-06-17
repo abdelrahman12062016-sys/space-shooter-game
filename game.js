@@ -1,5 +1,5 @@
 // ==========================================================================
-// SPACE SHOOTER: COMPLETE ARCHITECTUUR DEEL 1 V3.0 (STABIEL & CRASH-FREE)
+// SPACE SHOOTER: COMPLETE ARCHITECTUUR DEEL 1 V3.1 (ADMIN MASTER CONFIG)
 // ==========================================================================
 
 // --- 1. GLOBALE CONFIGURATIE ---
@@ -7,7 +7,7 @@ const CONFIG = {
   CANVAS_WIDTH: 800,
   CANVAS_HEIGHT: 600,
   PLAYER_BASE_SPEED: 5,
-  PLAYER_INVULN_DURATION: 2000, // ms na geraakt te worden
+  PLAYER_INVULN_DURATION: 2000, 
   BULLET_NORMAL_SPEED: -8,
   BULLET_SPREAD_SPEED: -7,
   BULLET_BEAM_SPEED: -16,
@@ -18,10 +18,10 @@ const CONFIG = {
   PARTICLE_DECAY_MAX: 0.03
 };
 
-// --- 2. GAME STATE (HET CENTRALE BREIN) ---
-let isAdmin = false;
-let isLoggedIn = false;
-let currentLoggedInUser = "";
+// --- 2. GAME STATE (DIRECT INLOGGED ALS ADMIN NET ALS GISTEREN) ---
+let isAdmin = true;                           // Direct admin rechten bij opstarten!
+let isLoggedIn = true;                        // Meteen ingelogd om testen makkelijk te maken
+let currentLoggedInUser = "abdullahminihoofd"; // Jouw admin-account staat standaard actief
 let timeFrozen = false;
 
 let gameStarted = false;
@@ -46,21 +46,21 @@ let player = {
   height: 32
 };
 
-let bullets = [];       // Speler kogels
-let enemyBullets = [];  // Boss / Special enemy kogels
-let enemies = [];       // Gewone vijanden
-let stars = [];         // Parallax achtergrond sterren
-let fireworks = [];     // Victory particles
-let damageNumbers = []; // Zwevende combat-text (-1, -3, etc.)
-let powerUps = [];      // Vallende power-ups op het scherm
-let particles = [];     // Explosie deeltjes
+let bullets = [];       
+let enemyBullets = [];  
+let enemies = [];       
+let stars = [];         
+let fireworks = [];     
+let damageNumbers = []; 
+let powerUps = [];      
+let particles = [];     
 
 // Weapon & Power-up Mechanics
-let activeWeapon = "normal";    // 'normal', 'spread', 'beam'
-let weaponExpiresAt = 0;        // Timestamp wanneer wapen verloopt
-let activePowerUp = null;       // 'shield', 'multiplier'
-let powerUpExpiresAt = 0;       // Timestamp wanneer powerup verloopt
-let controlMode = localStorage.getItem("controlMode") || "pc"; // 'pc' of 'mobile'
+let activeWeapon = "normal";    
+let weaponExpiresAt = 0;        
+let activePowerUp = null;       
+let powerUpExpiresAt = 0;       
+let controlMode = localStorage.getItem("controlMode") || "pc"; 
 
 let keys = {};
 let mouse = { x: 0, y: 0 };
@@ -68,31 +68,31 @@ let mouse = { x: 0, y: 0 };
 // Spawner Intervals & Timers
 let timers = {
   enemySpawn: 0,
-  enemyInterval: 1200,      // Spawntijd in ms
+  enemyInterval: 1200,      
   powerUpSpawn: 0,
-  powerUpInterval: 15000,   // Spawntijd in ms
+  powerUpInterval: 15000,   
   lastBossShot: 0
 };
 
 let currentBoss = null;
-let nextBossScore = 100;    // Score nodig voor de eerste Boss spawn
+let nextBossScore = 100;    
 
-// --- 3. LOCAL STORAGE DATABASE (ACCOUNTS & LEADERBOARD) ---
+// --- 3. LOCAL STORAGE DATABASE (EXACTE ADMINS & WACHTWOORDEN) ---
 let accounts = JSON.parse(localStorage.getItem("space_accounts_db")) || {
-  "admin": { password: "masteradminpassword", isAdmin: true },
-  "hacker": { password: "root", isAdmin: true },
-  "player": { password: "123", isAdmin: false }
+  "abdelamr": { password: "abdelamradmin6767", isAdmin: true },
+  "darianmeyer": { password: "darianadmim6767", isAdmin: true },
+  "abdullahminihoofd": { password: "abdull123admin", isAdmin: true }
 };
 
 let leaderboard = JSON.parse(localStorage.getItem("space_leaderboard_db")) || [
-  { username: "Admin", score: 5000, date: "2026-06-15" },
-  { username: "StarFighter", score: 3500, date: "2026-05-20" },
-  { username: "GalaxyQuest", score: 2200, date: "2026-06-01" },
+  { username: "abdullahminihoofd", score: 5000, date: "2026-06-17" },
+  { username: "abdelamr", score: 3500, date: "2026-06-17" },
+  { username: "darianmeyer", score: 2200, date: "2026-06-17" },
   { username: "Nebula", score: 1100, date: "2026-06-10" },
   { username: "CosmoNoob", score: 150, date: "2026-06-16" }
 ];
 
-// --- 4. ADVANCED SYNTHESIZER AUDIO ENGINE (WEB AUDIO API) ---
+// --- 4. ADVANCED SYNTHESIZER AUDIO ENGINE ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playSound(type) {
@@ -109,7 +109,7 @@ function playSound(type) {
     switch (type) {
       case "shoot":
         osc.type = "sine";
-        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.setValueAtTime(587.33, now); 
         osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
         gain.gain.setValueAtTime(0.08, now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
@@ -119,7 +119,7 @@ function playSound(type) {
 
       case "spread":
         osc.type = "triangle";
-        osc.frequency.setValueAtTime(440, now); // A4
+        osc.frequency.setValueAtTime(440, now); 
         osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
         gain.gain.setValueAtTime(0.1, now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
@@ -129,7 +129,7 @@ function playSound(type) {
 
       case "beam":
         osc.type = "sawtooth";
-        osc.frequency.setValueAtTime(880, now); // A5
+        osc.frequency.setValueAtTime(880, now); 
         osc.frequency.linearRampToValueAtTime(660, now + 0.08);
         gain.gain.setValueAtTime(0.04, now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
@@ -148,7 +148,6 @@ function playSound(type) {
         break;
 
       case "explosion":
-        // Genereert ruis-achtig effect met sawtooth laag in frequentie
         osc.type = "sawtooth";
         osc.frequency.setValueAtTime(90, now);
         osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
@@ -160,9 +159,9 @@ function playSound(type) {
 
       case "powerup":
         osc.type = "sine";
-        osc.frequency.setValueAtTime(261.63, now); // C4
-        osc.frequency.linearRampToValueAtTime(523.25, now + 0.15); // C5
-        osc.frequency.linearRampToValueAtTime(1046.50, now + 0.3); // C6
+        osc.frequency.setValueAtTime(261.63, now); 
+        osc.frequency.linearRampToValueAtTime(523.25, now + 0.15); 
+        osc.frequency.linearRampToValueAtTime(1046.50, now + 0.3); 
         gain.gain.setValueAtTime(0.12, now);
         gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
         osc.start(now);
@@ -191,8 +190,6 @@ function showSignUp() {
   document.getElementById("signup-box").style.display = "flex";
   document.getElementById("login-error").innerText = "";
 }
-
-// Wordt aangeroepen vanuit HTML link
 window.showSignUp = showSignUp;
 
 function showLogin() {
@@ -242,6 +239,9 @@ function logInUser(username, adminStatus) {
   if (isAdmin) {
     document.getElementById("admin-touch-button").style.display = "block";
     document.getElementById("admin-panel-user").innerText = username + " (ROOT)";
+  } else {
+    document.getElementById("admin-touch-button").style.display = "none";
+    document.getElementById("hacker-admin-panel").style.display = "none";
   }
 
   updateLeaderboardsUI();
