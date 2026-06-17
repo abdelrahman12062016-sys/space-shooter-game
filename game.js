@@ -1,5 +1,5 @@
 // ==========================================================================
-// SPACE SHOOTER: COMPLETE ARCHITECTUUR DEEL 1 V3.1 (ADMIN MASTER CONFIG)
+// SPACE SHOOTER: COMPLETE ARCHITECTUUR DEEL 1 V3.2 (GEFIXTE VERSIE)
 // ==========================================================================
 
 // --- 1. GLOBALE CONFIGURATIE ---
@@ -19,9 +19,9 @@ const CONFIG = {
 };
 
 // --- 2. GAME STATE (DIRECT INLOGGED ALS ADMIN NET ALS GISTEREN) ---
-let isAdmin = true;                           // Direct admin rechten bij opstarten!
-let isLoggedIn = true;                        // Meteen ingelogd om testen makkelijk te maken
-let currentLoggedInUser = "abdullahminihoofd"; // Jouw admin-account staat standaard actief
+let isAdmin = true;                           
+let isLoggedIn = true;                        
+let currentLoggedInUser = "abdullahminihoofd"; 
 let timeFrozen = false;
 
 let gameStarted = false;
@@ -222,6 +222,7 @@ function checkSignUp() {
   if (!u || !p) { return err.innerText = "Kies een naam & wachtwoord!"; }
   if (accounts[u]) { return err.innerText = "Gebruikersnaam bestaat al!"; }
 
+  // FIX: Sla het nieuwe account direct op in het lokale object VOORDAT logInUser wordt aangeroepen
   accounts[u] = { password: p, isAdmin: false };
   localStorage.setItem("space_accounts_db", JSON.stringify(accounts));
   logInUser(u, false);
@@ -236,17 +237,32 @@ function logInUser(username, adminStatus) {
   document.getElementById("login-screen").style.display = "none";
   document.getElementById("hud-username").innerText = username;
 
+  const adminButton = document.getElementById("admin-touch-button");
+  const adminPanelTitle = document.getElementById("admin-panel-user");
+
   if (isAdmin) {
-    document.getElementById("admin-touch-button").style.display = "block";
-    document.getElementById("admin-panel-user").innerText = username + " (ROOT)";
+    if (adminButton) adminButton.style.display = "block";
+    if (adminPanelTitle) adminPanelTitle.innerText = username + " (ROOT)";
   } else {
-    document.getElementById("admin-touch-button").style.display = "none";
+    if (adminButton) adminButton.style.display = "none";
     document.getElementById("hacker-admin-panel").style.display = "none";
   }
 
   updateLeaderboardsUI();
   playSound("powerup");
 }
+
+// FIX: Forceer de UI direct bij het laden van de pagina om te synchroniseren met de opstart-state (abdullahminihoofd als actieve admin)
+window.addEventListener("DOMContentLoaded", () => {
+  if (isLoggedIn && isAdmin) {
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("hud-username").innerText = currentLoggedInUser;
+    const adminButton = document.getElementById("admin-touch-button");
+    if (adminButton) adminButton.style.display = "block";
+    const adminPanelTitle = document.getElementById("admin-panel-user");
+    if (adminPanelTitle) adminPanelTitle.innerText = currentLoggedInUser + " (ROOT)";
+  }
+});
 // ==========================================================================
 // SPACE SHOOTER: ENGINE LOGICA & BOTSINGEN (DEEL 2)
 // ==========================================================================
