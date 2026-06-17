@@ -1,95 +1,249 @@
-// --- 1. VARIABELEN & INITIALISATIE ---
-let isAdmin = false, isLoggedIn = false, currentLoggedInUser = "", timeFrozen = false;
-let currentBoss = null, nextBossScore = 100, enemyBullets = [], victoryAchieved = false;
-let fireworks = [], damageNumbers = [], bullets = [], enemies = [], stars = [];
-let lives = 3, score = 0, gameOver = false, gameStarted = false, gamePaused = false;
-let activeWeapon = "normal", weaponExpiresAt = 0, activePowerUp = null;
-let controlMode = localStorage.getItem("controlMode") || "pc";
-let enemySpawnTimer = null, powerUpSpawnTimer = null;
+// ==========================================================================
+// SPACE SHOOTER: COMPLETE ARCHITECTUUR DEEL 1 V3.0 (STABIEL & CRASH-FREE)
+// ==========================================================================
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const player = { x: 300, y: 300, size: 20, speed: 4, invulnerable: false };
+// --- 1. GLOBALE CONFIGURATIE ---
+const CONFIG = {
+  CANVAS_WIDTH: 800,
+  CANVAS_HEIGHT: 600,
+  PLAYER_BASE_SPEED: 5,
+  PLAYER_INVULN_DURATION: 2000, // ms na geraakt te worden
+  BULLET_NORMAL_SPEED: -8,
+  BULLET_SPREAD_SPEED: -7,
+  BULLET_BEAM_SPEED: -16,
+  ENEMY_MIN_SPEED: 1.5,
+  ENEMY_MAX_SPEED: 3.5,
+  BOSS_HP_PER_LEVEL: 50,
+  PARTICLE_DECAY_MIN: 0.01,
+  PARTICLE_DECAY_MAX: 0.03
+};
+
+// --- 2. GAME STATE (HET CENTRALE BREIN) ---
+let isAdmin = false;
+let isLoggedIn = false;
+let currentLoggedInUser = "";
+let timeFrozen = false;
+
+let gameStarted = false;
+let gameOver = false;
+let gamePaused = false;
+let victoryAchieved = false;
+
+let score = 0;
+let lives = 3;
+let currentLevel = 1;
+let highScore = parseInt(localStorage.getItem("space_shooter_master_hs")) || 0;
+
+// Entities & Object Pools
+let player = {
+  x: 385,
+  y: 500,
+  size: 32,
+  speed: CONFIG.PLAYER_BASE_SPEED,
+  invulnerable: false,
+  invulnTimer: 0,
+  width: 32,
+  height: 32
+};
+
+let bullets = [];       // Speler kogels
+let enemyBullets = [];  // Boss / Special enemy kogels
+let enemies = [];       // Gewone vijanden
+let stars = [];         // Parallax achtergrond sterren
+let fireworks = [];     // Victory particles
+let damageNumbers = []; // Zwevende combat-text (-1, -3, etc.)
+let powerUps = [];      // Vallende power-ups op het scherm
+let particles = [];     // Explosie deeltjes
+
+// Weapon & Power-up Mechanics
+let activeWeapon = "normal";    // 'normal', 'spread', 'beam'
+let weaponExpiresAt = 0;        // Timestamp wanneer wapen verloopt
+let activePowerUp = null;       // 'shield', 'multiplier'
+let powerUpExpiresAt = 0;       // Timestamp wanneer powerup verloopt
+let controlMode = localStorage.getItem("controlMode") || "pc"; // 'pc' of 'mobile'
+
 let keys = {};
 let mouse = { x: 0, y: 0 };
 
-// --- 2. GAME ENGINE ---
-function update() {
-    if (!gameStarted || gameOver || gamePaused) return;
+// Spawner Intervals & Timers
+let timers = {
+  enemySpawn: 0,
+  enemyInterval: 1200,      // Spawntijd in ms
+  powerUpSpawn: 0,
+  powerUpInterval: 15000,   // Spawntijd in ms
+  lastBossShot: 0
+};
 
-    // Sterren
-    stars.forEach(s => { s.y += s.speed; if (s.y > canvas.height) { s.y = 0; s.x = Math.random() * canvas.width; } });
+let currentBoss = null;
+let nextBossScore = 100;    // Score nodig voor de eerste Boss spawn
 
-    // Input
-    if (keys["w"]) player.y -= player.speed;
-    if (keys["s"]) player.y += player.speed;
-    if (keys["a"]) player.x -= player.speed;
-    if (keys["d"]) player.x += player.speed;
+// --- 3. LOCAL STORAGE DATABASE (ACCOUNTS & LEADERBOARD) ---
+let accounts = JSON.parse(localStorage.getItem("space_accounts_db")) || {
+  "admin": { password: "masteradminpassword", isAdmin: true },
+  "hacker": { password: "root", isAdmin: true },
+  "player": { password: "123", isAdmin: false }
+};
 
-    // Botsingen (CRASH-FREE REVERSE LOOPS)
-    for (let bi = bullets.length - 1; bi >= 0; bi--) {
-        let b = bullets[bi]; b.x += b.dx; b.y += b.dy;
-        for (let ei = enemies.length - 1; ei >= 0; ei--) {
-            let e = enemies[ei];
-            if (b.x < e.x + e.size && b.x + b.size > e.x && b.y < e.y + e.size && b.y + b.size > e.y) {
-                enemies.splice(ei, 1); addScore(1);
-                damageNumbers.push({ x: b.x, y: b.y, text: "-1", color: "#fff176", alpha: 1, life: 25 });
-                if (!b.isBeam) { bullets.splice(bi, 1); break; }
-            }
-        }
+let leaderboard = JSON.parse(localStorage.getItem("space_leaderboard_db")) || [
+  { username: "Admin", score: 5000, date: "2026-06-15" },
+  { username: "StarFighter", score: 3500, date: "2026-05-20" },
+  { username: "GalaxyQuest", score: 2200, date: "2026-06-01" },
+  { username: "Nebula", score: 1100, date: "2026-06-10" },
+  { username: "CosmoNoob", score: 150, date: "2026-06-16" }
+];
+
+// --- 4. ADVANCED SYNTHESIZER AUDIO ENGINE (WEB AUDIO API) ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playSound(type) {
+  try {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    const now = audioCtx.currentTime;
+
+    switch (type) {
+      case "shoot":
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(587.33, now); // D5
+        osc.frequency.exponentialRampToValueAtTime(150, now + 0.12);
+        gain.gain.setValueAtTime(0.08, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.12);
+        osc.start(now);
+        osc.stop(now + 0.12);
+        break;
+
+      case "spread":
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, now); // A4
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+        break;
+
+      case "beam":
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(880, now); // A5
+        osc.frequency.linearRampToValueAtTime(660, now + 0.08);
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+        osc.start(now);
+        osc.stop(now + 0.08);
+        break;
+
+      case "hit":
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(120, now);
+        osc.frequency.linearRampToValueAtTime(40, now + 0.1);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.linearRampToValueAtTime(0.0001, now + 0.1);
+        osc.start(now);
+        osc.stop(now + 0.1);
+        break;
+
+      case "explosion":
+        // Genereert ruis-achtig effect met sawtooth laag in frequentie
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(90, now);
+        osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.5);
+        osc.start(now);
+        osc.stop(now + 0.5);
+        break;
+
+      case "powerup":
+        osc.type = "sine";
+        osc.frequency.setValueAtTime(261.63, now); // C4
+        osc.frequency.linearRampToValueAtTime(523.25, now + 0.15); // C5
+        osc.frequency.linearRampToValueAtTime(1046.50, now + 0.3); // C6
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+        break;
+
+      case "boss_spawn":
+        osc.type = "sawtooth";
+        osc.frequency.setValueAtTime(80, now);
+        osc.frequency.linearRampToValueAtTime(120, now + 0.4);
+        osc.frequency.linearRampToValueAtTime(60, now + 0.8);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.8);
+        osc.start(now);
+        osc.stop(now + 0.8);
+        break;
     }
-    
-    // Vijanden bewegen
-    for (let ei = enemies.length - 1; ei >= 0; ei--) {
-        let e = enemies[ei];
-        let dx = player.x - e.x; let dy = player.y - e.y;
-        let dist = Math.sqrt(dx * dx + dy * dy) || 0.0001;
-        if (!timeFrozen) { e.x += (dx / dist) * e.speed; e.y += (dy / dist) * e.speed; }
-        if (dist < player.size) { enemies.splice(ei, 1); if(!player.invulnerable) lives--; if(lives <= 0) endGame(); }
-    }
-    
-    damageNumbers.forEach((dn, i) => { dn.y -= 0.8; dn.life--; dn.alpha = dn.life/30; if(dn.life <= 0) damageNumbers.splice(i, 1); });
+  } catch (e) {
+    console.warn("Audio Context init/play error:", e);
+  }
 }
 
-function draw() {
-    ctx.fillStyle = "#000"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    // Teken speler
-    ctx.fillStyle = "#00e5ff"; ctx.fillRect(player.x, player.y, player.size, player.size);
-    // Teken vijanden
-    enemies.forEach(e => { ctx.fillStyle = "#ff304f"; ctx.fillRect(e.x, e.y, e.size, e.size); });
-    // Teken kogels
-    bullets.forEach(b => { ctx.fillStyle = "#fff176"; ctx.fillRect(b.x, b.y, 5, 5); });
-    // Teken schade
-    damageNumbers.forEach(dn => { ctx.fillStyle = dn.color; ctx.globalAlpha = dn.alpha; ctx.fillText(dn.text, dn.x, dn.y); });
-    ctx.globalAlpha = 1;
+// --- 5. INTERACTIEF ACCOUNT SYSTEEM ---
+function showSignUp() {
+  document.getElementById("login-box").style.display = "none";
+  document.getElementById("signup-box").style.display = "flex";
+  document.getElementById("login-error").innerText = "";
 }
 
-// --- 3. CONTROLS & SETUP ---
-function startGame() { 
-    gameStarted = true; lives = 3; score = 0; enemies = []; bullets = []; 
-    document.getElementById("start-screen").classList.add("hidden"); 
-    document.getElementById("hud").classList.remove("hidden");
+// Wordt aangeroepen vanuit HTML link
+window.showSignUp = showSignUp;
+
+function showLogin() {
+  document.getElementById("signup-box").style.display = "none";
+  document.getElementById("login-box").style.display = "flex";
+  document.getElementById("login-error").innerText = "";
 }
+window.showLogin = showLogin;
 
-function leaveGame() { location.reload(); }
-function togglePause() { gamePaused = !gamePaused; }
-function shootNearestEnemy() { /* Logica om kogel toe te voegen */ bullets.push({x: player.x, y: player.y, dx: 0, dy: -10}); }
+function checkLogin() {
+  const u = document.getElementById("username").value.trim();
+  const p = document.getElementById("password").value;
+  const err = document.getElementById("login-error");
 
-// Events
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+  if (!u || !p) { return err.innerText = "Velden mogen niet leeg zijn!"; }
 
-document.getElementById("start-button").addEventListener("click", startGame);
-document.getElementById("pause-button").addEventListener("click", togglePause);
-document.getElementById("mobile-shoot-button").addEventListener("click", shootNearestEnemy);
-
-// --- 4. GAME LOOP ---
-function loop() {
-    update();
-    draw();
-    requestAnimationFrame(loop);
+  if (accounts[u] && accounts[u].password === p) {
+    logInUser(u, accounts[u].isAdmin);
+  } else {
+    err.innerText = "Ongeldige logingegevens.";
+  }
 }
+window.checkLogin = checkLogin;
 
-// Initialisatie
-for(let i=0; i<100; i++) stars.push({x:Math.random()*800, y:Math.random()*600, size:2, speed:Math.random()});
-loop();
+function checkSignUp() {
+  const u = document.getElementById("new-username").value.trim();
+  const p = document.getElementById("new-password").value;
+  const err = document.getElementById("login-error");
+
+  if (!u || !p) { return err.innerText = "Kies een naam & wachtwoord!"; }
+  if (accounts[u]) { return err.innerText = "Gebruikersnaam bestaat al!"; }
+
+  accounts[u] = { password: p, isAdmin: false };
+  localStorage.setItem("space_accounts_db", JSON.stringify(accounts));
+  logInUser(u, false);
+}
+window.checkSignUp = checkSignUp;
+
+function logInUser(username, adminStatus) {
+  isLoggedIn = true;
+  currentLoggedInUser = username;
+  isAdmin = adminStatus;
+
+  document.getElementById("login-screen").style.display = "none";
+  document.getElementById("hud-username").innerText = username;
+
+  if (isAdmin) {
+    document.getElementById("admin-touch-button").style.display = "block";
+    document.getElementById("admin-panel-user").innerText = username + " (ROOT)";
+  }
+
+  updateLeaderboardsUI();
+  playSound("powerup");
+}
